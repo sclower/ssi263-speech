@@ -18,7 +18,9 @@ int bt_detect(void);
 /* 1, and blazie_emu_bt's path in out: the BT frontend and its worker are installed beside this program */
 int bt_frontend(char *out, size_t cap);
 
-/* Hands over when a BT device is found, unless no_bt (--no-bt) or the setting ([input] bt) is off: one line said,
+/* Hands over when the setting ([input] bt) is "frontend" and a BT device is found, unless no_bt (--no-bt) -- by
+ * default (auto) blazie_emu uses the device's keyboard and braille display itself (btkb_linux.h, brl_linux.h): one
+ * line said,
  * then blazie_emu_bt runs in this process with the options that have an equivalent there (each NULL or 0 when not
  * given): --unit, --firmware, --config as --state-dir, --rate.  Returns when the terminal emulator is to run: no
  * device, the hand-over turned off, or the frontend missing or failing to start (each said in one line). */

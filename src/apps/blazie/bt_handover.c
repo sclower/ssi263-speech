@@ -80,10 +80,11 @@ void bt_hand_over(int no_bt, const char *setting, const char *unit, const char *
     int n = 0;
     if (getenv("BLAZIE_BT_BREAK")) {           /* the tests' control: --no-bt and the setting ignored, --unit lost */
         no_bt = 0;
-        setting = "auto";
+        setting = "frontend";
         unit = NULL;
     }
-    if (no_bt || !strcmp(setting, "off") || !strcmp(setting, "0") || !bt_detect())
+    /* only when asked for: by default (auto) blazie_emu uses the device's keyboard and display itself */
+    if (no_bt || strcmp(setting, "frontend") || !bt_detect())
         return;
     if (!bt_frontend(exe, sizeof exe)) {
         printf("BT Speak or BT Braille detected, but blazie_emu_bt is not installed beside blazie_emu: "

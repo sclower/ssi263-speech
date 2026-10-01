@@ -122,6 +122,28 @@ check "emulator: the clock (Type 'n Speak)" ./build/linux/test_clock tns "$TNS"
 control "emulator: held keys CONTROL (never reported held, must fail)" "^FAIL i-chord held through the restart" \
     "^FAILED$" -- env TEST_CLOCK_HOLD_BREAK=1 ./build/linux/test_clock bl "$DATA/BL2ENG.BNS" \
     "$DATA/bl2_2003_warm.state" restart
+# the Braille Lite's braille display and its two advance bars (bl_board.h bl_display, bl_bars; test_emu_unit checks
+# them in every Braille Lite run above): the Spanish unit too, and the Braille 'n Speak 2000 has no display -- each when
+# its firmware is there.  The control sends the bars as port 40h bit 7, where the shells used to (the firmware never
+# reads it): the panning checks must fail, the display's must still pass
+SPA="$DATA/spanish/BL2SPA.BNS"; SPA_ST="$DATA/spanish/bl2spa_fresh.state"
+[ -f "$SPA" ] || { SPA="$DATA/BL2SPA.BNS"; SPA_ST="$DATA/bl2spa_fresh.state"; }
+[ -f "$SPA" ] && check "emulator: the display and the advance bars (Spanish Braille Lite)" ./build/linux/test_emu_unit \
+    bl "$SPA" "$SPA_ST"
+BNS="$DATA/bns2000/BS03ENG.BNS"
+[ -f "$BNS" ] && check "emulator: the Braille 'n Speak 2000, no display" ./build/linux/test_emu_unit bl "$BNS" \
+    "$DATA/bns2000/bs03eng_fresh.state"
+control "emulator: advance bars CONTROL (port 40h bit 7, must fail)" "^ok +braille display" "^FAIL advance bar" \
+    "^FAIL back bar" "^FAILED$" -- env TEST_EMU_BARS_BREAK=1 ./build/linux/test_emu_unit bl "$DATA/BL2ENG.BNS" \
+    "$DATA/bl2_2003_warm.state"
+# the BT Speak's and BT Braille's keyboard server (btkb_linux.c) against a server of the test's own, the menu gesture by
+# time, the panning keys from BRLTTY's tables, the display's layout (brl_linux.c); the program with it is
+# test_emu_linux.py's btspeak.  Its control: dots 7 and 8 never wait for a chord's other keys, so the gesture typed 7
+# first must fail
+check "emulator: the BT keyboard server and the display layout" ./build/linux/test_btkb
+control "emulator: BT keyboard CONTROL (dots 7 and 8 never wait, must fail)" "^FAIL gesture: dot 7 first, then M-chord" \
+    "^ok +gesture: M-chord's keys first" "^ok +server: every key consumed" "^FAIL: 1 failure$" \
+    -- env BTKB_BREAK=1 ./build/linux/test_btkb
 # the Type 'n Speak's real cold reset (Timothy, Jayson): a unit the previews saved without its file system or folders,
 # told apart and set up anew with its files (test_rescue); its control leaves the old cold start on through the rescue
 # the sound buffer (audio_pace.c; Tomi: the emulator's speech stutters): the queue against a simulated card, for the
@@ -152,17 +174,19 @@ if [ -x "$EMU" ]; then
         "^FAIL +the clock, from the system time \(letters\)" "^emulator: [23] of 4 FAILED$" \
         -- env BLAZIE_KEYS_BREAK=1 python3 src/apps/blazie/test_emu_linux.py "$EMU" "$DATA" \
         --only boot,clock-keys,clock-letters
-    # one emulator everywhere (Tomi): on a BT Speak or BT Braille blazie_emu hands over to blazie_emu_bt
-    # (bt_handover.c) -- the detection against a stand-in BTSpeak library, this machine's own answer (no), the
-    # hand-over's options to a stand-in frontend, and --no-bt, [input] bt = off, no device and a missing frontend
-    # keeping the terminal; its control ignores --no-bt and the setting and loses --unit
-    check "emulator: a BT Speak or BT Braille found, handed over to blazie_emu_bt" \
+    # one emulator everywhere (Tomi): on a BT Speak or BT Braille blazie_emu uses the device itself, or with
+    # [input] bt = frontend hands over to blazie_emu_bt (bt_handover.c) -- the detection against a stand-in BTSpeak
+    # library, this machine's own answer (no), the hand-over's options to a stand-in frontend, and --no-bt,
+    # bt = off, the default (auto), no device and a missing frontend keeping this program; its control ignores
+    # --no-bt and the setting and loses --unit
+    check "emulator: a BT Speak or BT Braille found: blazie_emu itself, or blazie_emu_bt with bt = frontend" \
         python3 src/apps/blazie/test_bt_handover.py "$EMU"
     control "emulator: BT hand-over CONTROL (--no-bt and the setting ignored, --unit lost, must fail)" \
         "^ok +detection: the BTSpeak library and its keyboard service" "^ok +detection: no BTSpeak library" \
         "^FAIL +hand-over: the device found, its options" "^FAIL +--no-bt: the terminal emulator" \
-        "^FAIL +\[input\] bt = off: the terminal emulator" "^ok +no device: the terminal emulator" \
-        "^bt hand-over: 3 of 10 FAILED$" -- env BLAZIE_BT_BREAK=1 python3 src/apps/blazie/test_bt_handover.py "$EMU"
+        "^FAIL +\[input\] bt = off: the terminal emulator" "^FAIL +the default \(auto\): no hand-over" \
+        "^ok +no device: the terminal emulator" \
+        "^bt hand-over: 4 of 11 FAILED$" -- env BLAZIE_BT_BREAK=1 python3 src/apps/blazie/test_bt_handover.py "$EMU"
     check "emulator: libraries needed (libc, libm, libasound/libpulse; libstdc++ inside)" sh -c "! ldd $EMU | \
         grep -v -E 'linux-vdso|ld-linux|libc\.so|libm\.so|libpthread|libasound|libpulse|libdl' | grep -q . && \
         ! ldd $EMU | grep -q -E 'libstdc|libgcc_s' && echo 'only the C library and the sound library'"

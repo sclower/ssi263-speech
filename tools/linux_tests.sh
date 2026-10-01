@@ -144,6 +144,11 @@ check "emulator: the BT keyboard server and the display layout" ./build/linux/te
 control "emulator: BT keyboard CONTROL (dots 7 and 8 never wait, must fail)" "^FAIL gesture: dot 7 first, then M-chord" \
     "^ok +gesture: M-chord's keys first" "^ok +server: every key consumed" "^FAIL: 1 failure$" \
     -- env BTKB_BREAK=1 ./build/linux/test_btkb
+# the BT Speak .deb (src/platforms/btspeak/deb): its maintainer scripts against a scratch root and scratch homes, the
+# firmware from a fake release of the test's own; its control never runs postrm, so the menus must not come back
+check "BT Speak .deb: install and removal (scratch root, User Menus, firmware fetch)" sh tools/btspeak_deb_test.sh
+control "BT Speak .deb CONTROL (postrm never runs, must fail)" "^FAIL +removal: the menus exactly as they were" \
+    "^ok +install: three User Menu entries" "^btspeak deb: FAILED$" -- env BTSPEAK_DEB_BREAK=1 sh tools/btspeak_deb_test.sh
 # the Type 'n Speak's real cold reset (Timothy, Jayson): a unit the previews saved without its file system or folders,
 # told apart and set up anew with its files (test_rescue); its control leaves the old cold start on through the rescue
 # the sound buffer (audio_pace.c; Tomi: the emulator's speech stutters): the queue against a simulated card, for the

@@ -24,6 +24,23 @@ That is all: "Braille Lite 2000" is now in the User Menu (and the Type 'n Speak,
 The package carries the firmware. `./uninstall-btspeak.sh` removes it again. The package must have been built on
 Debian 12 or older (a BT Speak's system: glibc 2.36); one built on Debian 13 will not start.
 
+## The .deb (the easiest way)
+
+Install it with apt:
+
+    sudo apt install ./blazie-emu-btspeak_<version>_arm64.deb
+
+It puts the emulator in `/usr/lib/blazie-emu-btspeak`, fetches the firmware from this project's own release download
+(checked against its published SHA-256: the firmware is never inside the .deb), and adds Braille Lite 2000,
+Braille 'n Speak 2000 and Type 'n Speak to the User Menu of every BT Speak user on the device. Without a network at
+the time, it installs all the same and the menu entry fetches the firmware on first start.
+`sudo apt remove blazie-emu-btspeak` takes the program, the fetched firmware and those three menu lines away; the
+rest of the User Menu is left exactly as it was, and the units' saved memory stays.
+
+Built with `src/platforms/btspeak/deb/build_deb.sh` after `./build_linux.sh`, on Debian 12 or older. With each
+release, `deb/fetch-firmware`'s URL and SHA-256 move to that release's `blazie-emu-<version>-linux-aarch64.tar.gz`.
+`tools/btspeak_deb_test.sh` checks the package's scripts against a scratch root (`tools/linux_tests.sh` runs it).
+
 ## Testing a build before it is released
 
 A tester's package (`tools/package_btspeak.sh`: `blazie-emu-btspeak-<version>-linux-aarch64.tar.gz`) has the new

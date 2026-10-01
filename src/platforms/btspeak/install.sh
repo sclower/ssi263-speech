@@ -10,8 +10,9 @@
 #   PREFIX        where to install: ~/.local by default, which needs no root (the menu entries name the program by
 #                 its full path, so it need not be on the PATH); PREFIX=/usr/local with sudo for every user
 #   FIRMWARE_DIR  the Blazie firmware, laid out as the repository's firmware/blazie (BL2ENG.BNS and its state,
-#                 spanish/, tns/, bns2000/) or all in one folder; default: the package's share/ssi263-speech, or the
-#                 source tree's firmware/blazie
+#                 spanish/, tns/, bns2000/) or all in one folder -- or a release's blazie-emu-*.tar.gz, as downloaded
+#                 (its share/ssi263-speech is used); default: the package's share/ssi263-speech, or the source tree's
+#                 firmware/blazie
 #   --menu        adds a line per unit whose firmware is there to ~/BTSpeak/user.menu (once: a unit already listed
 #                 is left alone)
 set -e
@@ -28,11 +29,18 @@ FW=""
 for a in "$@"; do
     case "$a" in
         --menu) MENU=1 ;;
-        -h|--help) sed -n '2,16p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
         *) FW="$a" ;;
     esac
 done
 FW="${FW:-$DEF_FW}"
+case "$FW" in
+    *.tar.gz|*.tgz)                            # a release download: its firmware, unpacked for the copy below
+        TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
+        tar -xzf "$FW" -C "$TMP" --wildcards '*/share/ssi263-speech/*' \
+            || { echo "no firmware in $FW"; exit 1; }
+        FW="$(dirname "$(find "$TMP" -name BL2ENG.BNS | head -n 1)")" ;;
+esac
 
 [ -x "$BIN/blazie_emu" ] || { echo "no $BIN/blazie_emu: build it first (./build_linux.sh)"; exit 1; }
 [ -f "$FW/BL2ENG.BNS" ] || { echo "no Braille Lite firmware in $FW (BL2ENG.BNS: firmware/blazie/README.txt)"; exit 1; }

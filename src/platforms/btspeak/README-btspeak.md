@@ -24,6 +24,19 @@ That is all: "Braille Lite 2000" is now in the User Menu (and the Type 'n Speak,
 The package carries the firmware. `./uninstall-btspeak.sh` removes it again. The package must have been built on
 Debian 12 or older (a BT Speak's system: glibc 2.36); one built on Debian 13 will not start.
 
+## Testing a build before it is released
+
+A tester's package (`tools/package_btspeak.sh`: `blazie-emu-btspeak-<version>-linux-aarch64.tar.gz`) has the new
+program but no firmware. Download it and the project's own `blazie-emu-<version>-linux-aarch64.tar.gz` from its
+latest release (that one carries the firmware), then:
+
+    tar -xzf blazie-emu-btspeak-*-linux-aarch64.tar.gz
+    cd blazie-emu-btspeak-*-linux-aarch64
+    ./install-btspeak.sh --menu ~/Downloads/blazie-emu-0.7.0-linux-aarch64.tar.gz
+
+(the second file's name and folder as you saved it). The firmware is taken from it as it is; nothing else of it is
+installed.
+
 ## Build and install from the source
 
 On the BT Speak or BT Braille itself (both run Debian 12, arm64):

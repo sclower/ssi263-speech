@@ -1,5 +1,6 @@
 """Model discovery and preferences without external firmware or device access."""
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -46,6 +47,10 @@ class ProfileTests(unittest.TestCase):
             self.assertEqual(Preferences.load(path).unit, "tns-es")
             prefs.store(False)
             self.assertEqual(Preferences.load(path).unit, "tns-es")
+            for invalid in ("yes", 1, None, []):
+                path.write_text(json.dumps({"intro_shown": invalid}))
+                with self.assertRaises(ValueError):
+                    Preferences.load(path)
             path.write_text('{"unit": []}')
             with self.assertRaises(ValueError):
                 Preferences.load(path)

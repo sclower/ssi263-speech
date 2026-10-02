@@ -1,5 +1,6 @@
 """Accessible sound controls, applied while the firmware worker is paused."""
 
+import curses
 from dataclasses import replace
 from gettext import gettext as _
 from types import ModuleType
@@ -10,12 +11,13 @@ from profiles import BY_KEY
 from worker import Worker, WorkerError
 
 
-def audio_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences) -> None:
+def audio_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences, *, stdscr: curses.window | None = None) -> None:
     buffers = {"auto": _("Automatic (starts at 60 ms, increases if needed)"),
                "medium": _("Medium (100 ms)"), "long": _("Long (250 ms)")}
     idle = {"0": _("Silent"), "1": _("Hiss"), "2": _("Whine"), "3": _("Original unit behavior")}
     keep = {"0": _("During speech only"), "1": _("Until the firmware switches off"), "2": _("Always")}
     rates = {str(rate): _("{rate} Hz").format(rate=rate) for rate in RATES}
+    selected_key = "b"
     while True:
         current = preferences.audio
         choices = {
@@ -31,9 +33,10 @@ def audio_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences) ->
             })
         choices["h"] = _("Audio help")
         choices["x"] = _("Back")
-        choice = dialogs.request_choice(choices, prompt=_("Audio settings"), default="x")
+        choice = dialogs.request_choice(choices, prompt=_("Audio settings"), default=selected_key, stdscr=stdscr)
         if choice is None or choice.key == "x":
             return
+        selected_key = choice.key
         if choice.key == "h":
             dialogs.show_message(_(
                 "A smaller sound buffer reduces the delay before speech. Automatic starts at 60 milliseconds\n"
@@ -42,24 +45,25 @@ def audio_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences) ->
                 "Changing sample rate saves memory and restarts the emulated unit, preserving its files and settings.\n"
                 "Idle sound, channel behavior, pops, and ticks apply to Braille Lite and Braille 'n Speak only.\n"
                 "Speech speed, pitch, inflection, and volume are controlled by the original firmware."
-            ))
+            ), stdscr=stdscr)
             continue
         selected = None
         updated = current
         if choice.key == "b":
-            selected = dialogs.request_choice(buffers, prompt=_("Sound buffer"), default=current.buffer)
+            selected = dialogs.request_choice(buffers, prompt=_("Sound buffer"), default=current.buffer, stdscr=stdscr)
             if selected:
                 updated = replace(current, buffer=selected.key)
         elif choice.key == "r":
-            selected = dialogs.request_choice(rates, prompt=_("Sample rate (saves and restarts the unit)"), default=str(current.rate))
+            selected = dialogs.request_choice(rates, prompt=_("Sample rate (saves and restarts the unit)"), default=str(current.rate),
+                                              stdscr=stdscr)
             if selected:
                 updated = replace(current, rate=int(selected.key))
         elif choice.key == "i":
-            selected = dialogs.request_choice(idle, prompt=_("Idle sound"), default=str(current.idle))
+            selected = dialogs.request_choice(idle, prompt=_("Idle sound"), default=str(current.idle), stdscr=stdscr)
             if selected:
                 updated = replace(current, idle=int(selected.key))
         elif choice.key == "c":
-            selected = dialogs.request_choice(keep, prompt=_("Keep channel open"), default=str(current.keep_open))
+            selected = dialogs.request_choice(keep, prompt=_("Keep channel open"), default=str(current.keep_open), stdscr=stdscr)
             if selected:
                 updated = replace(current, keep_open=int(selected.key))
         elif choice.key == "p":
@@ -70,16 +74,17 @@ def audio_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences) ->
             continue
         try:
             if updated.rate != current.rate:
-                with dialogs.activity(_("Saving memory and changing sample rate")):
+                with dialogs.activity(_("Saving memory and changing sample rate"), stdscr=stdscr):
                     worker.request(updated.command(), "OK")
             else:
                 worker.request(updated.command(), "OK")
         except WorkerError as exc:
-            dialogs.show_message(_("Audio setting unchanged: {error}").format(error=exc))
+            dialogs.show_message(_("Audio setting unchanged: {error}").format(error=exc), stdscr=stdscr)
             continue
         try:
             preferences.store(preferences.quick_keys, audio=updated)
         except OSError as exc:
             # The preference object still holds the old settings until its atomic write succeeds.
             worker.request(current.command(), "OK")
-            dialogs.show_message(_("Could not save audio settings; restored the previous settings: {error}").format(error=exc))
+            dialogs.show_message(_("Could not save audio settings; restored the previous settings: {error}").format(error=exc),
+                                 stdscr=stdscr)

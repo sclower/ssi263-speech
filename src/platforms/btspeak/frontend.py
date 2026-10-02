@@ -1,6 +1,7 @@
 """Blazie Mode host menus and direct keyboard capture for the firmware emulator."""
 
 import argparse
+import curses
 import os
 import select
 import signal
@@ -75,8 +76,9 @@ def capture(worker: Worker, kb_client: ModuleType, display: BrailleOutput | None
 
 
 def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
-              units: dict[str, str] | None = None) -> str:
+              units: dict[str, str] | None = None, *, stdscr: curses.window | None = None) -> str:
     """The worker is paused and the keyboard is back with BRLTTY."""
+    selected_key = "r"
     while True:
         choices = {
             "r": _("Resume emulator"),
@@ -90,28 +92,29 @@ def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
             choices["f"] = _("Firmware: {name}").format(name=units[preferences.unit])
         if BY_KEY[preferences.unit].kind == "tns":
             choices["t"] = _("Send Type 'n Speak key")
-        choice = dialogs.request_choice(choices, prompt=_("Blazie emulator"), default="r")
+        choice = dialogs.request_choice(choices, prompt=_("Blazie emulator"), default=selected_key, stdscr=stdscr)
         if choice is None or choice.key == "r":
             return "resume"
+        selected_key = choice.key
         if choice.key == "q":
             return "quit"
         if choice.key == "o":
-            audio_menu(worker, dialogs, preferences)
+            audio_menu(worker, dialogs, preferences, stdscr=stdscr)
             continue
         if choice.key == "t":
-            name = dialogs.request_input(_("Key name, for example ctrl-o, alt-x, or f1"))
+            name = dialogs.request_input(_("Key name, for example ctrl-o, alt-x, or f1"), stdscr=stdscr)
             if name:
                 try:
                     if not name.isascii() or any(char.isspace() for char in name):
                         raise ValueError(_("Use a single key name, with hyphens for modifiers."))
                     worker.request("TNS " + name, "OK")
                 except (ValueError, WorkerError) as exc:
-                    dialogs.show_message(str(exc))
+                    dialogs.show_message(str(exc), stdscr=stdscr)
                     continue
                 return "resume"
             continue
         if choice.key == "f" and units:
-            selected = dialogs.request_choice(units, prompt=_("Choose firmware"), default=preferences.unit)
+            selected = dialogs.request_choice(units, prompt=_("Choose firmware"), default=preferences.unit, stdscr=stdscr)
             if selected is not None and selected.key != preferences.unit:
                 return "unit:" + selected.key
             continue
@@ -125,9 +128,9 @@ def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
                 raise
             continue
         if choice.key == "s":
-            with dialogs.activity(_("Saving memory")):
+            with dialogs.activity(_("Saving memory"), stdscr=stdscr):
                 worker.request("SAVE", "SAVED")
-            dialogs.show_message(_("Memory saved."))
+            dialogs.show_message(_("Memory saved."), wait=False, wait_for_speech=True, stdscr=stdscr)
         elif choice.key == "h":
             if BY_KEY[preferences.unit].kind == "tns":
                 dialogs.show_message(_(
@@ -137,7 +140,7 @@ def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
                     "dots 2/5 chords are Left/Right. Other space chords send Control plus the character.\n"
                     "Use Send Type 'n Speak key for function keys, Shift, Alt, and other combinations.\n"
                     "M-chord with Dot 7 opens this menu; Z-chord with Dot 7 saves and closes the terminal."
-                ))
+                ), stdscr=stdscr)
                 continue
             display_help = (_("On BT Braille, L3 or R3 advances braille; L2 or R2 moves it back. Routing keys are unused.\n")
                             if preferences.unit.startswith("bl-") else
@@ -154,7 +157,36 @@ def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
                 "It is optional, remembered between runs, and off by default for original timing.\n"
                 "Choose Firmware to switch units; each keeps its own saved memory.\n"
                 "Braille follows the selected firmware; unused cells are blank."
-            ).format(display_help=display_help))
+            ).format(display_help=display_help), stdscr=stdscr)
+
+
+def menu_session(worker: Worker, dialogs: ModuleType, preferences: Preferences, units: dict[str, str]) -> str:
+    """Keep one terminal screen across host menus; return it before capturing firmware keys."""
+    result = "resume"
+    error: Exception | None = None
+
+    def run(window: curses.window) -> None:
+        nonlocal result, error
+        try:
+            result = host_menu(worker, dialogs, preferences, units, stdscr=window)
+        except Exception as exc:
+            # The platform wrapper reports and swallows exceptions. Let main report worker/save
+            # failures after the wrapper has restored the terminal instead.
+            error = exc
+
+    dialogs.curses_wrapper_low_level2(run)
+    if error is not None:
+        raise error
+    return result
+
+
+def show_intro(dialogs: ModuleType, preferences: Preferences) -> None:
+    """Remember the keyboard introduction only after it has been shown successfully."""
+    if not preferences.intro_shown:
+        dialogs.show_message(_(
+            "Use the original six-dot chords. M-chord with Dot 7 opens the emulator menu."
+        ))
+        preferences.store(preferences.quick_keys, intro_shown=True)
 
 
 def deep_escape(host: ModuleType) -> None:
@@ -236,10 +268,7 @@ def main() -> int:
             worker = start_unit(selected)
             preferences.store(preferences.quick_keys, unit=selected)
         first_start_notice(selected)
-        dialogs.show_message(_(
-            "Use the original six-dot chords. M-chord with Dot 7 opens the emulator menu."
-        ))
-        action = "resume"
+        show_intro(dialogs, preferences)
         display = BrailleOutput(brl)
         while True:
             worker.request("RESUME", "RUNNING")
@@ -253,13 +282,15 @@ def main() -> int:
             if action == "deep_escape":
                 exit_to_editor = True
                 break
-            action = host_menu(worker, dialogs, preferences, units)
+            action = menu_session(worker, dialogs, preferences, units)
+            if action == "resume":
+                host.say(_("Menu closed"), immediate=True, wait=True, as_ui=True)
             if action == "quit":
                 break
             if action.startswith("unit:"):
                 selected = action[5:]
                 try:
-                    with dialogs.activity(_("Switching firmware")):
+                    with dialogs.activity(_("Switching to {name}").format(name=BY_KEY[selected].label)):
                         candidate = start_unit(selected)
                 except (OSError, WorkerError) as exc:
                     dialogs.show_message(_("Could not switch firmware: {error}").format(error=exc))

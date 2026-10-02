@@ -64,7 +64,7 @@ Optional arguments:
 ./build/linux/blazie_emu_bt --device default
 ```
 
-The initial default is 22050 Hz with the long (250 ms) audio buffer. Audio choices are remembered;
+The initial default is 22050 Hz with the automatic audio buffer (starting at 60 ms). Audio choices are remembered;
 `--rate` overrides and saves the sample rate for this and later runs. Sound-device
 failure is reported; it does not silently continue without a voice. Braille Lite and Braille 'n Speak require a factory state on the
 first start; Type 'n Speak uses its own cold setup. An existing saved state takes precedence; a damaged state is reported instead of reset.
@@ -84,7 +84,14 @@ first start; Type 'n Speak uses its own cold setup. An existing saved state take
 | Other panel keys and all routing keys | Unassigned |
 
 The host menu offers Resume, Save memory, Quick key response, Audio settings, Firmware, Keyboard help, and Save and exit.
-The normal BT dialog controls apply while in the host menu.
+The normal BT dialog controls apply while in the host menu. Menus and submenus share one terminal screen,
+and returning from a submenu keeps the previously selected row. Audio settings opens on Sound buffer.
+Leaving the host menu with Z-chord (Escape) or Resume announces "Menu closed" before the firmware resumes.
+Save memory announces "Memory saved" and returns to the menu without requiring Enter.
+
+The keyboard introduction is shown once per saved-memory directory, with the acknowledgement stored in
+`preferences.json`. Existing preferences without that flag show it once after updating. Keyboard help
+remains available from the host menu.
 
 Z-chord with Dot 7 uses the platform's existing `Tools/deep-escape`, after the emulator has saved and restored
 its host context. The helper runs detached from the terminal it closes, using noninteractive sudo when needed,
@@ -110,11 +117,12 @@ extra chords. There is no translated text input, capital-letter shortcut, or sub
 ## Audio settings
 
 Open **M-chord with Dot 7 → Audio settings**. Choices are kept in `preferences.json` and apply across
-firmware switches and launches. Existing preferences without audio settings retain the previous defaults.
+firmware switches and launches. Saved audio choices are preserved; preferences without a buffer setting use Automatic.
+Buffer labels include their timing: Automatic starts at 60 ms and increases if needed, Medium is 100 ms, and Long is 250 ms.
 
 | Control | Choices | Initial default |
 | --- | --- | --- |
-| Sound buffer | Automatic (starts at 60 ms and grows up to 250 ms if playback runs dry), Medium (100 ms), Long (250 ms) | Long |
+| Sound buffer | Automatic (starts at 60 ms and grows up to 250 ms if playback runs dry), Medium (100 ms), Long (250 ms) | Automatic |
 | Sample rate | 11025, 16000, 22050, 32000, 44100, 48000 Hz | 22050 Hz |
 | Idle sound | Silent, hiss, whine, original unit behavior | Original unit behavior |
 | Keep channel open | During speech only, until firmware switches off, always | Until firmware switches off |
@@ -140,6 +148,7 @@ preference write restores the previous audio settings. Use **Back** or cancel to
 Open M-chord with Dot 7, then **Firmware**. The menu lists installed, supported firmware with a factory
 state or an existing saved memory. A failed switch leaves the previous unit available; a successful switch
 saves it before running the new unit. The choice is remembered, or override it with `--unit bl-en` etc.
+The switch announcement names the selected model and language.
 The same nested and flat firmware-folder layouts as the original terminal emulator are accepted.
 
 | Unit ID | Firmware | Saved memory | Braille |

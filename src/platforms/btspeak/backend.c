@@ -24,7 +24,7 @@ static emu_unit *unit;
 static audio_out *audio;
 static const char *save_path, *device, *firmware;
 static int rate, paused = 1, failed;
-static int buffer_mode = AP_LONG, idle_sound = 3, keep_open = 1, pop_click = 1, tick = 1, quick_keys;
+static int buffer_mode = AP_AUTO, idle_sound = 3, keep_open = 1, pop_click = 1, tick = 1, quick_keys;
 static double next_tick, next_save;
 static unsigned char bars_queue[64];
 static int bars_count, bars_last;

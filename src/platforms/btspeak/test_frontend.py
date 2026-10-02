@@ -9,7 +9,7 @@ from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from unittest.mock import Mock, patch
 
-from frontend import capture, deep_escape, host_menu, main
+from frontend import capture, deep_escape, host_menu, main, menu_session, show_intro
 from keymap import DEEP_ESCAPE, MENU
 from preferences import Preferences
 
@@ -67,6 +67,71 @@ def chord_events(bits):
 
 
 class FrontendTests(unittest.TestCase):
+    def test_intro_is_shown_once_across_launches_and_preserved_by_settings(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "preferences.json"
+            path.write_text('{"quick_keys": true, "unit": "bl-es"}')
+            prefs = Preferences.load(path)
+            dialogs = SimpleNamespace(show_message=Mock())
+            show_intro(dialogs, prefs)
+            loaded = Preferences.load(path)
+            self.assertTrue(loaded.intro_shown)
+            self.assertTrue(loaded.quick_keys)
+            self.assertEqual(loaded.unit, "bl-es")
+            loaded.store(False, unit="tns-en")
+            show_intro(dialogs, Preferences.load(path))
+            dialogs.show_message.assert_called_once()
+
+    def test_failed_intro_or_save_is_not_remembered(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prefs = Preferences(Path(tmp) / "preferences.json")
+            dialogs = SimpleNamespace(show_message=Mock(side_effect=OSError("display failed")))
+            with self.assertRaises(OSError):
+                show_intro(dialogs, prefs)
+            self.assertFalse(prefs.path.exists())
+            dialogs.show_message.side_effect = None
+            with patch.object(prefs, "store", side_effect=OSError("disk full")), self.assertRaises(OSError):
+                show_intro(dialogs, prefs)
+            self.assertFalse(prefs.intro_shown)
+
+    def test_submenus_share_screen_and_return_to_previous_row(self):
+        window = object()
+        steps = iter(["o", "b", None, "x", "f", None, "r"])
+        calls = []
+
+        def choice(choices, *, prompt, default, stdscr):
+            self.assertIs(stdscr, window)
+            self.assertNotIn("a", choices)
+            calls.append((prompt, default))
+            key = next(steps)
+            return None if key is None else SimpleNamespace(key=key)
+
+        def wrapper(fn):
+            self.assertEqual(worker.request.call_count, 0)
+            return fn(window)
+
+        dialogs = SimpleNamespace(request_choice=choice, curses_wrapper_low_level2=Mock(side_effect=wrapper))
+        worker = Mock()
+        prefs = Preferences(Path("unused"))
+        self.assertEqual(menu_session(worker, dialogs, prefs, {"bl-en": "English"}), "resume")
+        dialogs.curses_wrapper_low_level2.assert_called_once()
+        worker.request.assert_not_called()
+        self.assertEqual(calls, [("Blazie emulator", "r"), ("Audio settings", "b"), ("Sound buffer", "auto"),
+                                ("Audio settings", "b"), ("Blazie emulator", "o"), ("Choose firmware", "bl-en"),
+                                ("Blazie emulator", "f")])
+
+    def test_menu_failure_propagates_after_terminal_restored(self):
+        events = []
+
+        def wrapper(fn):
+            fn(object())
+            events.append("restored")
+
+        dialogs = SimpleNamespace(curses_wrapper_low_level2=wrapper)
+        with patch("frontend.host_menu", side_effect=OSError("save failed")), self.assertRaises(OSError):
+            menu_session(Mock(), dialogs, Preferences(Path("unused")), {})
+        self.assertEqual(events, ["restored"])
+
     def test_type_n_speak_uses_qwerty_adapter_without_leaking_menu_chord(self):
         kb, conn = keyboard(chord_events(0x3D) + chord_events(256 | 0x11) + chord_events(MENU))
         output, peer = socket.socketpair()
@@ -126,7 +191,8 @@ class FrontendTests(unittest.TestCase):
                 runtime.kb_client = SimpleNamespace(server_available=lambda: True)
                 runtime.brl = SimpleNamespace(has_display=lambda: False, write=lambda text: None)
                 runtime.host = SimpleNamespace(push_self_voice=lambda value: None, pop_self_voice=lambda: None)
-                runtime.dialogs = SimpleNamespace(activity=lambda text: contextlib.nullcontext(), show_message=Mock())
+                runtime.dialogs = SimpleNamespace(activity=lambda text, **kwargs: contextlib.nullcontext(), show_message=Mock(),
+                                                 curses_wrapper_low_level2=lambda fn: fn(object()))
                 runtime.script = SimpleNamespace(start_log=lambda: Mock())
                 outcomes = [english, OSError("bad firmware") if fail else spanish]
                 with (patch.dict(sys.modules, {"BTSpeak": runtime}), patch("frontend.Worker", side_effect=outcomes) as start,
@@ -216,8 +282,9 @@ class FrontendTests(unittest.TestCase):
                                       has_display=lambda: True, write_dots=lambda cells: actions.append(("dots", cells)))
         runtime.host = SimpleNamespace(push_self_voice=lambda value: actions.append("push"),
                                        pop_self_voice=lambda: actions.append("pop"))
-        runtime.dialogs = SimpleNamespace(activity=lambda text: contextlib.nullcontext(),
-                                          show_message=lambda text: None, request_choice=choice)
+        runtime.dialogs = SimpleNamespace(activity=lambda text, **kwargs: contextlib.nullcontext(),
+                                          show_message=lambda text: None, request_choice=choice,
+                                          curses_wrapper_low_level2=lambda fn: fn(object()))
         runtime.script = SimpleNamespace(start_log=lambda: Mock())
 
         def leave(host):

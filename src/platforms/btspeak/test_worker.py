@@ -201,7 +201,7 @@ class WorkerTests(unittest.TestCase):
         self.saved.mkdir()
         with self.assertRaisesRegex(WorkerError, "save"):
             worker.request("AUDIO 48000 auto 0 0 0 0", "OK")
-        worker.request("AUDIO", "AUDIO 22050 long 3 1 1 1")
+        worker.request("AUDIO", "AUDIO 22050 auto 3 1 1 1")
         worker.request("RESUME", "RUNNING")
         worker.request("PAUSE", "PAUSED")
         self.saved.rmdir()
@@ -212,7 +212,7 @@ class WorkerTests(unittest.TestCase):
         self.addCleanup(worker.abort)
         with self.assertRaises(WorkerError):
             worker.request("AUDIO 48000 auto 0 0 0 0", "OK")
-        worker.request("AUDIO", "AUDIO 22050 long 3 1 1 1")
+        worker.request("AUDIO", "AUDIO 22050 auto 3 1 1 1")
         worker.close()
 
     def test_sample_rate_reload_failure_keeps_old_unit(self):
@@ -223,7 +223,7 @@ class WorkerTests(unittest.TestCase):
         firmware.unlink()  # The current unit has it in memory; recreating it must fail safely.
         with self.assertRaises(WorkerError):
             worker.request("AUDIO 48000 auto 0 0 0 0", "OK")
-        worker.request("AUDIO", "AUDIO 22050 long 3 1 1 1")
+        worker.request("AUDIO", "AUDIO 22050 auto 3 1 1 1")
         worker.request("RESUME", "RUNNING")
         worker.request("PAUSE", "PAUSED")
         worker.close()

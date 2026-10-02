@@ -10,7 +10,7 @@ BUFFERS = ("auto", "medium", "long")
 @dataclass(frozen=True)
 class AudioOptions:
     rate: int = 22050
-    buffer: str = "long"
+    buffer: str = "auto"
     idle: int = 3
     keep_open: int = 1
     pop_click: bool = True

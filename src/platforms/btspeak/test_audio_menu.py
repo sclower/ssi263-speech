@@ -24,13 +24,13 @@ class AudioMenuTests(unittest.TestCase):
 
     def dialogs(self, choices):
         return SimpleNamespace(request_choice=Mock(side_effect=[None if key is None else SimpleNamespace(key=key) for key in choices]),
-                               show_message=Mock(), activity=lambda text: contextlib.nullcontext())
+                               show_message=Mock(), activity=lambda text, **kwargs: contextlib.nullcontext())
 
     def test_all_controls_persist_without_losing_unit_or_quick_response(self):
         self.prefs.store(True, unit='bl-es')
-        dialogs = self.dialogs(['b', 'auto', 'r', '16000', 'i', '0', 'c', '2', 'p', 't', 'x'])
+        dialogs = self.dialogs(['b', 'medium', 'r', '16000', 'i', '0', 'c', '2', 'p', 't', 'x'])
         audio_menu(self.worker, dialogs, self.prefs)
-        expected = AudioOptions(16000, 'auto', 0, 2, False, False)
+        expected = AudioOptions(16000, 'medium', 0, 2, False, False)
         self.assertEqual(self.prefs.audio, expected)
         self.worker.request.assert_called_with(expected.command(), 'OK')
         loaded = Preferences.load(self.prefs.path)
@@ -55,11 +55,11 @@ class AudioMenuTests(unittest.TestCase):
         dialogs.show_message.assert_called_once()
 
     def test_save_failure_restores_previous_worker_settings(self):
-        dialogs = self.dialogs(['b', 'auto', 'x'])
+        dialogs = self.dialogs(['b', 'long', 'x'])
         with patch.object(self.prefs, 'store', side_effect=OSError('disk full')):
             audio_menu(self.worker, dialogs, self.prefs)
         self.assertEqual([c.args[0] for c in self.worker.request.call_args_list],
-                         [replace(AudioOptions(), buffer='auto').command(), AudioOptions().command()])
+                         [replace(AudioOptions(), buffer='long').command(), AudioOptions().command()])
         self.assertEqual(self.prefs.audio, AudioOptions())
         dialogs.show_message.assert_called_once()
 
@@ -72,6 +72,9 @@ class AudioMenuTests(unittest.TestCase):
     def test_migration_and_validation(self):
         self.prefs.path.write_text('{"quick_keys": true, "unit": "bl-es"}')
         self.assertEqual(Preferences.load(self.prefs.path).audio, AudioOptions())
+        self.assertEqual(Preferences.load(self.prefs.path).audio.buffer, 'auto')
+        self.prefs.path.write_text('{"audio": {"buffer": "long"}}')
+        self.assertEqual(Preferences.load(self.prefs.path).audio.buffer, 'long')
         for rate in RATES:
             self.assertEqual(AudioOptions.load({'rate': rate}).rate, rate)
         invalid = [None, [], {'rate': True}, {'rate': 123}, {'buffer': 'short'}, {'buffer': []},

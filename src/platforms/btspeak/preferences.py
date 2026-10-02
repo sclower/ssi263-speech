@@ -17,6 +17,7 @@ class Preferences:
     quick_keys: bool = False
     unit: str = "bl-en"
     audio: AudioOptions = field(default_factory=AudioOptions)
+    intro_shown: bool = False
 
     @classmethod
     def load(cls, path: Path) -> "Preferences":
@@ -26,19 +27,25 @@ class Preferences:
             return cls(path)
         if not isinstance(data, dict) or not isinstance(data.get("quick_keys", False), bool):
             raise ValueError(_("Invalid emulator preferences."))
+        if not isinstance(data.get("intro_shown", False), bool):
+            raise ValueError(_("Invalid emulator preferences."))
         unit = data.get("unit", "bl-en")
         if not isinstance(unit, str) or unit not in BY_KEY:
             raise ValueError(_("Invalid emulator firmware preference."))
-        return cls(path, data.get("quick_keys", False), unit, AudioOptions.load(data.get("audio", {})))
+        return cls(path, data.get("quick_keys", False), unit, AudioOptions.load(data.get("audio", {})),
+                   data.get("intro_shown", False))
 
-    def store(self, quick_keys: bool, *, unit: str | None = None, audio: AudioOptions | None = None) -> None:
+    def store(self, quick_keys: bool, *, unit: str | None = None, audio: AudioOptions | None = None,
+              intro_shown: bool | None = None) -> None:
         selected = self.unit if unit is None else unit
         sound = self.audio if audio is None else audio
+        introduced = self.intro_shown if intro_shown is None else intro_shown
         with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.path.parent,
                                          prefix=self.path.name + ".", delete=False) as stream:
             tmp = Path(stream.name)
             try:
-                json.dump({"quick_keys": quick_keys, "unit": selected, "audio": asdict(sound)}, stream)
+                json.dump({"quick_keys": quick_keys, "unit": selected, "audio": asdict(sound),
+                           "intro_shown": introduced}, stream)
                 stream.write("\n")
                 stream.flush()
                 os.fsync(stream.fileno())
@@ -48,3 +55,4 @@ class Preferences:
         self.quick_keys = quick_keys
         self.unit = selected
         self.audio = sound
+        self.intro_shown = introduced

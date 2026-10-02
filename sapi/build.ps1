@@ -50,9 +50,19 @@ foreach ($dll in Get-ChildItem -Recurse $Stage -Filter *.dll) {
 }
 if (!$Dev) {
   # The console-free way into the settings dialog: a GUI-subsystem launcher, so no console flashes and steals focus.
-  $launcherCl = Join-Path $msvc.FullName "bin\Hostx64\x64\cl.exe"
-  & $launcherCl /nologo /O2 /MT /W3 "/I$($msvc.FullName)\include" "/I$($sdk.FullName)\ucrt" "/I$($sdk.FullName)\um" "/I$($sdk.FullName)\shared" (Join-Path $PSScriptRoot "settings_launcher.c") "/Fe$Stage\ssi263_settings.exe" "/Fo$Stage\" /link /SUBSYSTEM:WINDOWS "/LIBPATH:$($msvc.FullName)\lib\x64" "/LIBPATH:$($sdk.Parent.Parent.FullName)\Lib\$($sdk.Name)\ucrt\x64" "/LIBPATH:$($sdk.Parent.Parent.FullName)\Lib\$($sdk.Name)\um\x64" user32.lib kernel32.lib
-  if ($LASTEXITCODE) { throw "settings launcher build failed ($LASTEXITCODE)" }
+  # Keep native PowerShell on each OS: the x64 launcher on 64-bit Windows, x86 on 32-bit Windows.
+  # Running the x86 launcher everywhere would redirect its PowerShell registry view on 64-bit Windows.
+  foreach ($launcherArch in "x86","x64") {
+    $launcherName = if ($launcherArch -eq "x86") { "ssi263_settings_x86.exe" } else { "ssi263_settings.exe" }
+    $launcherCl = Join-Path $msvc.FullName "bin\Hostx64\$launcherArch\cl.exe"
+    & $launcherCl /nologo /O2 /MT /W3 "/I$($msvc.FullName)\include" "/I$($sdk.FullName)\ucrt" "/I$($sdk.FullName)\um" "/I$($sdk.FullName)\shared" (Join-Path $PSScriptRoot "settings_launcher.c") "/Fe$Stage\$launcherName" "/Fo$Stage\" /link /SUBSYSTEM:WINDOWS "/LIBPATH:$($msvc.FullName)\lib\$launcherArch" "/LIBPATH:$($sdk.Parent.Parent.FullName)\Lib\$($sdk.Name)\ucrt\$launcherArch" "/LIBPATH:$($sdk.Parent.Parent.FullName)\Lib\$($sdk.Name)\um\$launcherArch" user32.lib kernel32.lib
+    if ($LASTEXITCODE) { throw "$launcherArch settings launcher build failed ($LASTEXITCODE)" }
+    $launcherBytes = [IO.File]::ReadAllBytes((Join-Path $Stage $launcherName))
+    $peOffset = [BitConverter]::ToInt32($launcherBytes, 0x3c)
+    $machine = [BitConverter]::ToUInt16($launcherBytes, $peOffset + 4)
+    $expectedMachine = if ($launcherArch -eq "x86") { 0x14c } else { 0x8664 }
+    if ($machine -ne $expectedMachine) { throw "$launcherName has the wrong CPU architecture" }
+  }
   Remove-Item (Join-Path $Stage "*.obj") -ErrorAction SilentlyContinue
   Set-Content -Encoding ASCII (Join-Path $Stage "settings.cmd") '@echo off
 powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File "%~dp0settings.ps1"'

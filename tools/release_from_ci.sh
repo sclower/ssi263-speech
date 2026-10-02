@@ -26,7 +26,8 @@
 #            checks cannot pass emulated): EXITCODES and STATUS say so.
 #   armhf    not built in CI (GitHub's arm64 runners cannot run 32-bit ARM code): the Pi's own route, its kept
 #            Debian 11 armhf chroot under linux32 (~/arm-work: mkchroot.sh, stage.sh, run_build.sh -- build, gate,
-#            package, wheel), then this repository's emulator archive.  Only the emulator archive ships.
+#            package, wheel), then this repository's emulator archive.  Only the emulator archive ships.  The GTK
+#            window checks run against the arm64 chroot's X server (the armhf Xvfb crashes on the Pi 5's kernel).
 # After each: on the Pi itself, the no-GPL audit of what ships, the GLIBC floor (2.29) of every binary in it and its
 # contents (the package: the Speak-Out's and Aicom's firmware, the BT frontend, no Braille 'n Speak 2000; the emulator
 # archive: the Braille 'n Speak 2000's four files and the BT frontend).  STATUS's first line is "ok" only when every
@@ -62,7 +63,7 @@ verdict() {                         # $L/STATUS: ok when every step is as it mus
         case "$n" in *_control) [ "$e" != 0 ] || bad="$bad $n";; *) [ "$e" = 0 ] || bad="$bad $n";; esac
     done < "$L/EXITCODES"
     if [ -z "$bad" ]; then echo ok > "$L/STATUS"; else echo "FAILED:$bad" > "$L/STATUS"; fi
-    grep "not-run" "$L/EXITCODES" >> "$L/STATUS"
+    grep -E "not-run|superseded" "$L/EXITCODES" >> "$L/STATUS"
     echo "STATUS $1: $(head -n 1 "$L/STATUS")"
 }
 
@@ -157,6 +158,42 @@ pi_verify() {                       # in $O, its assets: audit, GLIBC floor, con
     sha256sum -b "$@" > "SHA256SUMS-$ARCH.txt"
 }
 
+# armhf's GTK window checks: the armhf Xvfb segfaults at start on the Pi 5's 16K-page kernel (a test host limit), so the
+# gate's three GTK window checks fail there for want of an X server.  When they are the gate's only failures, they run
+# again against the arm64 chroot's Xvfb -- the program under test is still the armhf build -- with the gate's own marks
+# for the controls; if all hold, the gate's line becomes "tests superseded" with the reason (STATUS shows it).
+armhf_gtk() {                       # after the armhf run: $D its chroot, $CH its home, $H the two joined, $L, $AW
+    others="$(grep '^FAIL' "$L/tests.log" | grep -v -E \
+        '^FAIL  emulator \(GTK\): (the window as Orca reads it|accessibility CONTROL|held keys CONTROL)')"
+    [ -z "$others" ] && grep -q '^tests exit=1$' "$L/EXITCODES" || return 0
+    A64=/srv/arm64-bullseye
+    sh "$AW/mkchroot.sh" arm64 "$A64" bullseye > "$L/chroot_arm64.log" 2>&1 || { echo "arm64 chroot FAILED"; return 0; }
+    sudo chroot --userspec=1000:1000 "$A64" /usr/bin/env -i PATH=/usr/bin:/bin HOME="$CH" \
+        Xvfb :57 -screen 0 1024x768x24 -ac -listen tcp -nolisten unix > "$L/xvfb_arm64.log" 2>&1 &
+    sleep 3
+    gx() { sudo linux32 chroot --userspec=1000:1000 "$D" /usr/bin/env -i HOME="$CH" PATH=/usr/bin:/bin LANG=C.UTF-8 \
+        PYTHONDONTWRITEBYTECODE=1 PYTHON_COLORS=0 DISPLAY=127.0.0.1:57 "$@"; }
+    T="cd $CH/ssi263 && dbus-run-session -- python3 src/apps/blazie/test_emu_gtk.py build/linux/blazie_emu_gtk \
+        $CH/blazie-firmware"
+    step gtk_arm64_x gx sh -c "$T"
+    fail=0
+    . "$H/ssi263/tools/linux_control.sh"
+    { control "emulator (GTK): accessibility CONTROL (the keyboard area unnamed, must fail)" \
+        "^ok +menu bar: items by name" "^FAIL +keyboard area: named, focused +role panel, focused, name ''" \
+        "^ok +status bar" "^gtk emulator: 1 of 4 FAILED$" \
+        -- gx env BLAZIE_GTK_BREAK=noname sh -c "$T --only settings,tree"
+      control "emulator (GTK): held keys CONTROL (dots 1 and 4 swapped, must fail)" \
+        "^FAIL +i-chord held through the restart +the unit asked \"initialize file system\": no" \
+        "^gtk emulator: 1 of 1 FAILED$" -- gx env BLAZIE_KEYS_BREAK=1 sh -c "$T --only held"
+    } > "$L/gtk_arm64_x_controls.log" 2>&1
+    echo "gtk_arm64_x_controls exit=$fail" >> "$L/EXITCODES"
+    sudo pkill -f "^Xvfb :57 "
+    if grep -q '^gtk_arm64_x exit=0$' "$L/EXITCODES" && [ $fail -eq 0 ]; then
+        sed -i 's/^tests exit=1$/tests superseded: exit=1 only for its GTK window checks under the armhf Xvfb (it segfaults on the Pi 5 16K-page kernel); run again against the arm64 Xvfb: gtk_arm64_x, gtk_arm64_x_controls/' \
+            "$L/EXITCODES"
+    fi
+}
+
 on_pi() {
     ARCH="$1"; C="$2"; V="$3"
     W="$(cd "$HERE/.." && pwd)"; c="$(echo "$C" | cut -c1-7)"
@@ -216,6 +253,7 @@ on_pi() {
         echo "$C" > "$L/COMMIT"
         grep -E "^(FAIL|skip)|Linux checks" "$L/tests.log"
         S="$H/ssi263"
+        armhf_gtk
         cp "$S/build/blazie-emu-$V-linux-armhf.tar.gz" "$O/" 2>/dev/null
         ;;
     *) echo "no such architecture: $ARCH"; exit 2;;

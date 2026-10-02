@@ -68,17 +68,17 @@ echo "== boot, Braille Lite (no --firmware; a clean folder)"
 "./$NAME/bin/blazie_emu" --config "$C" --null --rate 22050 --unit bl-en --seconds 10 --rms 0:6 > boot.txt 2>&1
 echo "exit=$?"; cat boot.txt
 grep -q "^starting bl-en from .*/$NAME/bin/\.\./share/ssi263-speech/bl2_2003_warm.state" boot.txt || bad=1
-awk '/^rms 0.00-6.00 s:/ { ok = $NF > 0.01 } END { exit !ok }' boot.txt || bad=1
+awk '$1 == "rms" && $2 == "0.00-6.00" { ok = $NF > 0.01 } END { exit !ok }' boot.txt || bad=1
 echo "== boot, Type 'n Speak (no --firmware)"
 "./$NAME/bin/blazie_emu" --config "$C" --null --rate 22050 --unit tns-en --flash-instant --seconds 6 --rms 0:6 > tns.txt 2>&1
 echo "exit=$?"; cat tns.txt
-awk '/^rms 0.00-6.00 s:/ { ok = $NF > 0.01 } END { exit !ok }' tns.txt || bad=1
+awk '$1 == "rms" && $2 == "0.00-6.00" { ok = $NF > 0.01 } END { exit !ok }' tns.txt || bad=1
 for u in bns-en bns-sk; do
     echo "== boot, Braille 'n Speak 2000 $u (no --firmware)"
     "./$NAME/bin/blazie_emu" --config "$C" --null --rate 22050 --unit $u --seconds 8 --rms 0:6 > bns.txt 2>&1
     echo "exit=$?"; cat bns.txt
     grep -q "^starting $u from .*/$NAME/bin/\\.\\./share/ssi263-speech/bns2000/" bns.txt || bad=1
-    awk '/^rms 0.00-6.00 s:/ { ok = $NF > 0.01 } END { exit !ok }' bns.txt || bad=1
+    awk '$1 == "rms" && $2 == "0.00-6.00" { ok = $NF > 0.01 } END { exit !ok }' bns.txt || bad=1
 done
 echo "== blazie_files (no arguments: its usage)"; "./$NAME/bin/blazie_files" > files.txt 2>&1; echo "exit=$?"; head -n 2 files.txt
 grep -q "^usage: blazie_files" files.txt || bad=1

@@ -66,13 +66,10 @@ jobs:
       PYTHONDONTWRITEBYTECODE: "1"
       LANG: C.UTF-8
     steps:
-      # the Pi's chroots' sources (no security line: bullseye's LTS has ended and its security pool 404s) and their
-      # packages (the Pi's mkchroot.sh), and git for a real checkout
+      # the Pi's chroots' packages (its mkchroot.sh) and git for a real checkout, from the image's own sources: its
+      # packages already carry bullseye-security's updates, which the -dev packages must match
       - name: Debian 11's build packages
         run: |
-          printf 'deb http://deb.debian.org/debian bullseye main\ndeb http://deb.debian.org/debian bullseye-updates main\n' \
-            > /etc/apt/sources.list
-          rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources
           apt-get update -q
           DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends git ca-certificates \
             build-essential g++ pkg-config python3 python3-venv libasound2-dev libpulse-dev libgtk-3-dev \

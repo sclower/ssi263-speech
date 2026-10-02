@@ -1,7 +1,8 @@
 #!/bin/sh
 # A .deb of the Blazie emulator for the BT Speak and BT Braille: installed with apt, it fetches the firmware from the
-# project's own release and adds the units to the User Menu; removing it takes both away again.  No firmware is inside the .deb (the project's releases are the only place it is published from).
-# fetch-firmware takes it from the pinned release, else from the latest one by its SHA256SUMS.txt.
+# project's own release and adds the units to the User Menu; removing it takes both away again.  No firmware is
+# inside the .deb (the project's releases are the only place it is published from): fetch-firmware takes it from the
+# pinned release, else from the latest one by its SHA256SUMS.txt.
 #
 #   ./build_linux.sh && src/platforms/btspeak/deb/build_deb.sh [version]
 #   Output: build/blazie-emu-btspeak_<version>_arm64.deb
@@ -39,9 +40,10 @@ Installed-Size: $(du -sk "$STAGE/usr" | cut -f1)
 Description: Blazie Braille Lite 2000, Braille 'n Speak 2000 and Type 'n Speak emulator for the BT Speak
  The original Blazie firmware on an emulated SSI-263 voice, played with the BT Speak's own
  braille keys; on a BT Braille the Braille Lite's display appears on the BT Braille's display
- and its panning keys are the advance bars.  Installing fetches the firmware from the
- ssi263-speech project's release and adds the units to the User Menu; removing takes both
- away.  Space with dots 7 and 8 opens the emulator's menu; 0 then Enter quits.
+ and its L2/R2 and L3/R3 keys are the advance bars.  Installing fetches the firmware from
+ the ssi263-speech project's release and adds the units to the User Menu; removing takes
+ both away.  M-chord with dot 7 opens the emulator's menu; Z-chord with dot 7 saves and
+ quits.
 EOF
 if find "$STAGE" -iname '*.BNS' -o -iname '*.TNS' -o -name '*.state' | grep -q .; then
     echo "firmware found in the package: not made"; exit 1

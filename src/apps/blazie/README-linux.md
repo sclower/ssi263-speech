@@ -363,10 +363,10 @@ is given):
   the settings and shown so the next time. Its control (`BLAZIE_KEYS_BREAK=1`) must fail the two clock checks.
 - `test_btkb` -- the BTSpeak's and BT Braille's keyboard server (`btkb_linux.c`) against a server of the test's
   own: the hello asking for the keys alone, every key consumed within the server's 10 ms while the program is busy,
-  the keys in order, a server that is busy or absent or goes away; the menu gesture (space with dots 7 and 8) by
-  time; the panning keys from BRLTTY's tables; the display's layout. Its control (`BTKB_BREAK=1`, dots 7 and 8
-  never waiting for the space bar) must fail the gesture typed 7 first. `test_emu_linux.py`'s `btspeak` runs the
-  whole program with such a server.
+  the keys in order, a server that is busy or absent or goes away; #4's gestures (M-chord or Z-chord with dot 7)
+  and the bars by time; the panning keys from BRLTTY's tables; the display's layout. Its control (`BTKB_BREAK=1`,
+  dots 7 and 8 never waiting for a chord's other keys) must fail the gesture typed 7 first.
+  `test_emu_linux.py`'s `btspeak` runs the whole program with such a server.
 - `test_audio` -- the sound buffer (`audio_pace.c`, as on Windows) against a simulated sound card: for the Windows
   shell's thread and this one's (the card asked how much is queued and how far it has played, the thread asleep
   until a block is wanted): a steady card, a busy machine, a remote card, a slow save; and the arithmetic alone (the

@@ -96,7 +96,9 @@ jobs:
 
       - name: Toolchain
         run: |
-          echo "commit: $(git -c safe.directory='*' rev-parse HEAD)"
+          # the workspace is the runner's, the container root: git 2.30 asks for it by name, in the global config
+          git config --global --add safe.directory "$PWD"
+          echo "commit: $(git rev-parse HEAD)"
           echo "debian $(cat /etc/debian_version), $(uname -m), $(ldd --version | head -n 1)"
           gcc --version | head -n 1; python3 --version
 
@@ -110,7 +112,7 @@ jobs:
 
       - name: Pack the build
         run: |
-          git -c safe.directory='*' rev-parse HEAD > COMMIT
+          git rev-parse HEAD > COMMIT
           tar --exclude='build/linux/obj*' --exclude='build/linux/*.o' -czf "linux-build-${{ matrix.arch }}.tar.gz" \
             COMMIT build/linux "src/ssi263/_bin/linux-$(uname -m)"
           tar -tzf "linux-build-${{ matrix.arch }}.tar.gz" | wc -l

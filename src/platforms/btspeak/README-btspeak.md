@@ -37,8 +37,11 @@ the time, it installs all the same and the menu entry fetches the firmware on fi
 `sudo apt remove blazie-emu-btspeak` takes the program, the fetched firmware and those three menu lines away; the
 rest of the User Menu is left exactly as it was, and the units' saved memory stays.
 
-Built with `src/platforms/btspeak/deb/build_deb.sh` after `./build_linux.sh`, on Debian 12 or older. With each
-release, `deb/fetch-firmware`'s URL and SHA-256 move to that release's `blazie-emu-<version>-linux-aarch64.tar.gz`.
+Built with `src/platforms/btspeak/deb/build_deb.sh` after `./build_linux.sh`, on Debian 12 or older. The firmware
+comes from the release pinned in `deb/fetch-firmware` (v0.7.0's `blazie-emu-0.7.0-linux-aarch64.tar.gz`, by its
+SHA-256); should that download be gone or changed, from the latest release's `blazie-emu-<version>-linux-aarch64.tar.gz`,
+checked against that release's own `SHA256SUMS.txt`. So a new release needs no new package for the firmware; moving
+the pin to it is optional.
 `tools/btspeak_deb_test.sh` checks the package's scripts against a scratch root (`tools/linux_tests.sh` runs it).
 
 ## Testing a build before it is released

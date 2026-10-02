@@ -1,7 +1,7 @@
 #!/bin/sh
 # A .deb of the Blazie emulator for the BT Speak and BT Braille: installed with apt, it fetches the firmware from the
-# project's own release and adds the units to the User Menu; removing it takes both away again.  No firmware is inside the .deb (the project's releases are the only place it is published from).  With each
-# release, fetch-firmware's URL and SHA-256 move to that release's blazie-emu download.
+# project's own release and adds the units to the User Menu; removing it takes both away again.  No firmware is inside the .deb (the project's releases are the only place it is published from).
+# fetch-firmware takes it from the pinned release, else from the latest one by its SHA256SUMS.txt.
 #
 #   ./build_linux.sh && src/platforms/btspeak/deb/build_deb.sh [version]
 #   Output: build/blazie-emu-btspeak_<version>_arm64.deb

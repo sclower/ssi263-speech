@@ -19,17 +19,28 @@ check "no firmware inside the .deb" $((1 - fw_in))
 dpkg-deb -x "$DEB" "$T/root"
 dpkg-deb -e "$DEB" "$T/ctl"
 
-# a fake release: what the real one's share/ssi263-speech holds, the files' contents are not the firmware
-mkdir -p "$T/rel/blazie-emu-x/share/ssi263-speech/tns" "$T/stub"
-for f in BL2ENG.BNS bl2_2003_warm.state tns/TNSENG.TNS; do echo "$f" > "$T/rel/blazie-emu-x/share/ssi263-speech/$f"; done
-echo "not firmware" > "$T/rel/blazie-emu-x/README-blazie-emu.md"
-tar -czf "$T/release.tar.gz" -C "$T/rel" blazie-emu-x
-SHA="$(sha256sum "$T/release.tar.gz" | cut -d' ' -f1)"
+# two fake releases, the pinned one and a later "latest" one: what the real one's share/ssi263-speech holds (the files'
+# contents are not the firmware: each says which release it came from), and the latest's SHA256SUMS.txt
+mkdir -p "$T/stub" "$T/web/pinned" "$T/web/latest"
+for r in pinned latest; do
+    mkdir -p "$T/rel-$r/blazie-emu-x/share/ssi263-speech/tns"
+    for f in BL2ENG.BNS bl2_2003_warm.state tns/TNSENG.TNS; do echo "$r" > "$T/rel-$r/blazie-emu-x/share/ssi263-speech/$f"; done
+    echo "not firmware" > "$T/rel-$r/blazie-emu-x/README-blazie-emu.md"
+done
+tar -czf "$T/web/pinned/blazie-emu-0.7.0-linux-aarch64.tar.gz" -C "$T/rel-pinned" blazie-emu-x
+tar -czf "$T/web/latest/blazie-emu-9.9.0-linux-aarch64.tar.gz" -C "$T/rel-latest" blazie-emu-x
+SHA="$(sha256sum "$T/web/pinned/blazie-emu-0.7.0-linux-aarch64.tar.gz" | cut -d' ' -f1)"
+(cd "$T/web/latest" && sha256sum blazie-emu-9.9.0-linux-aarch64.tar.gz > SHA256SUMS.txt \
+    && echo "0000000000000000000000000000000000000000000000000000000000000000  blazie-emu-9.9.0-windows.zip" >> SHA256SUMS.txt)
+# curl stubbed: https://test.invalid/<path> is $T/web/<path>; NO_NETWORK fails everything, NO_PINNED the pinned one
 cat > "$T/stub/curl" <<STUB
 #!/bin/sh
 [ -n "\$NO_NETWORK" ] && exit 6
-while [ \$# -gt 1 ]; do [ "\$1" = -o ] && { cp "$T/release.tar.gz" "\$2"; exit 0; }; shift; done
-exit 2
+out=""; url=""
+while [ \$# -gt 0 ]; do case "\$1" in -o) out="\$2"; shift ;; https://*) url="\$1" ;; esac; shift; done
+case "\$url" in */pinned/*) [ -n "\$NO_PINNED" ] && exit 22 ;; esac
+f="$T/web/\${url#https://test.invalid/}"
+[ -f "\$f" ] && cp "\$f" "\$out" || exit 22
 STUB
 chmod +x "$T/stub/curl"
 
@@ -39,14 +50,15 @@ printf 'User Menu\nPlay TV: run vlc-play\n' > "$T/h/a/BTSpeak/user.menu"
 printf 'User Menu\nRadio: run radio' > "$T/h/d/BTSpeak/user.menu"
 printf 'User Menu\n\nNotes: run voice-notes\n\n' > "$T/h/e/BTSpeak/user.menu"
 for h in a e; do cp "$T/h/$h/BTSpeak/user.menu" "$T/orig/$h"; done
-export BTE_ROOT="$T/root" BTE_HOMES="$T/h/*" BTE_FIRMWARE_URL="file:///release.tar.gz" BTE_FIRMWARE_SHA="$SHA"
+export BTE_ROOT="$T/root" BTE_HOMES="$T/h/*" BTE_FIRMWARE_URL="https://test.invalid/pinned/blazie-emu-0.7.0-linux-aarch64.tar.gz" \
+    BTE_FIRMWARE_LATEST="https://test.invalid/latest" BTE_FIRMWARE_SHA="$SHA"
 PATH="$T/stub:$PATH"; export PATH
 FW="$T/root/usr/lib/blazie-emu-btspeak/share/ssi263-speech"
 
 "$T/ctl/postinst" configure >/dev/null
 "$T/ctl/postinst" configure >/dev/null
-[ -f "$FW/BL2ENG.BNS" ] && [ -f "$FW/tns/TNSENG.TNS" ] && [ ! -e "$FW/README-blazie-emu.md" ]
-check "install: the firmware fetched from the release, nothing else of it" $?
+[ "$(cat "$FW/BL2ENG.BNS" 2>/dev/null)" = pinned ] && [ -f "$FW/tns/TNSENG.TNS" ] && [ ! -e "$FW/README-blazie-emu.md" ]
+check "install: the firmware fetched from the pinned release, nothing else of it" $?
 n=0; for h in a b d e; do [ "$(grep -c 'run /usr/bin/blazie-emu-btspeak --unit ' "$T/h/$h/BTSpeak/user.menu")" = 3 ] || n=1; done
 check "install: three User Menu entries in each BT Speak home, once though installed twice" $n
 [ ! -e "$T/h/c/BTSpeak" ]
@@ -67,9 +79,27 @@ r=$?; [ $r = 0 ] && [ ! -e "$FW" ] && grep -q blazie-emu-btspeak "$T/h/a/BTSpeak
 check "offline: installed all the same, the menu there, no half-fetched firmware" $?
 "$T/ctl/prerm" remove; "$T/ctl/postrm" remove
 
+NO_PINNED=1 "$T/ctl/postinst" configure >/dev/null
+[ "$(cat "$FW/BL2ENG.BNS" 2>/dev/null)" = latest ]
+check "the pinned release gone: the firmware from the latest release, by its SHA256SUMS.txt" $?
+"$T/ctl/prerm" remove; "$T/ctl/postrm" remove
+
 BTE_FIRMWARE_SHA=0000000000000000000000000000000000000000000000000000000000000000 "$T/ctl/postinst" configure >/dev/null
+[ "$(cat "$FW/BL2ENG.BNS" 2>/dev/null)" = latest ]
+check "the pinned download not the same file (checksum): never used, the latest release's instead" $?
+"$T/ctl/prerm" remove; "$T/ctl/postrm" remove
+
+cp "$T/web/latest/SHA256SUMS.txt" "$T/sums.good"
+sed -i 's/^[0-9a-f]\{64\}  blazie-emu-9.9.0-linux/1111111111111111111111111111111111111111111111111111111111111111  blazie-emu-9.9.0-linux/' \
+    "$T/web/latest/SHA256SUMS.txt"
+NO_PINNED=1 "$T/ctl/postinst" configure >/dev/null
 [ ! -e "$FW" ]
-check "a download that is not the release (wrong checksum) never installed" $?
+check "the latest release's download not what its SHA256SUMS.txt says: never installed" $?
+"$T/ctl/prerm" remove; "$T/ctl/postrm" remove
+grep -v linux-aarch64 "$T/sums.good" > "$T/web/latest/SHA256SUMS.txt"
+NO_PINNED=1 "$T/ctl/postinst" configure >/dev/null
+[ ! -e "$FW" ]
+check "the latest release lists no blazie-emu linux-aarch64 download: nothing installed" $?
 "$T/ctl/prerm" remove; "$T/ctl/postrm" remove
 
 rm -f "$DEB"

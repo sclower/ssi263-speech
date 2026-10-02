@@ -71,13 +71,14 @@ typedef struct {
     int stop_r, stop_w;                 /* the program to the reader thread: stop */
     unsigned long thread;               /* pthread_t */
     int running;
+    int opened;                         /* btkb_open has set the fds (an all-zero btkb is one never opened) */
 } btkb;
 
 /* Connects to the server at path (NULL: BTKB_SOCKET) and takes the keyboard, exclusively.  1 on success; 0 with the
    reason in msg (no server here, another program holds the keyboard, ...); *absent (NULL: not wanted) is 1 when
    there is no server at all (not a BT Speak or BT Braille). */
 int btkb_open(btkb *b, const char *path, char *msg, int msglen, int *absent);
-/* gives the keyboard back to BRLTTY (safe when not open) */
+/* gives the keyboard back to BRLTTY (safe when not open, and on an all-zero btkb never opened: a static one) */
 void btkb_close(btkb *b);
 /* the fd to poll for the keys (-1 when not open) */
 int btkb_fd(const btkb *b);

@@ -8,8 +8,9 @@ as the Braille Lite's advance bars.
 It is the Linux emulator (`blazie_emu`, [README-linux.md](../../apps/blazie/README-linux.md)) itself, with no Python
 needed on the device: on a BT Speak or BT Braille it reads the keyboard from the device's keyboard server and shows
 the unit's display through BRLTTY, so any braille display BRLTTY drives works. The Braille Lite's two advance bars
-work everywhere the emulator runs. The other route, #4's frontend (`blazie_emu_bt`, [README.md](README.md)), with the
-device's own Blazie Mode dialogs, is `bt = frontend` under `[input]` in the settings.
+work everywhere the emulator runs. This is `bt = native` under `[input]` in the settings: by default `blazie_emu`
+hands over to #4's front end (`blazie_emu_bt`, [README.md](README.md)), with the device's own Blazie Mode dialogs, and
+uses this route itself only when that front end is not installed beside it.
 
 ## Install from the release
 
@@ -77,7 +78,8 @@ units' saved memory, in `~/.config/ssi263-speech/blazie-emu`, is kept).
 ## Keys
 
 While the emulator runs, the keyboard is the unit's, not BRLTTY's (the program asks the keyboard server for it
-alone):
+alone). The keys are the same on both routes, with two differences in #4's front end (the default): dots 7 and 8
+alone are not bars there, and its menu is the device's own dialogs rather than lines BRLTTY reads.
 
 | BT Speak / BT Braille | Braille Lite |
 | --- | --- |
@@ -122,8 +124,8 @@ BRLTTY's display (its FWINLT and FWINRT commands) are the back and advance bars,
 | `display = auto` | the unit's display on BRLTTY's display when it has one; `off`: never |
 
 and in `[keys]`, `back` and `advance` name the keys that are the bars (`brl_dot7`, `brl_dot8` on these devices).
-`[input] bt`: `auto` (this program uses the device itself), `frontend` (hands over to #4's `blazie_emu_bt`), `off`
-(the terminal only).
+`[input] bt`: `auto` (hands over to #4's `blazie_emu_bt`; without it, as `native`), `native` (this program uses the
+device itself), `off` (the terminal only).
 
 ## The advance bars
 

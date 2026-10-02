@@ -10,23 +10,23 @@ Speech, keyboard access, and the firmware's own braille output are supported. Th
 
 ## Build and run
 
-Run `blazie_emu`, the same command as on any other Linux machine. On a BT Speak or BT Braille it uses the device
-itself by default ([README-btspeak.md](README-btspeak.md)); with `bt = frontend` under `[input]` in its
-`blazie_emu.ini` it hands over to this frontend. From the repository root, with the English firmware and factory
-state in `firmware/blazie/`:
+Run `blazie_emu`, the same command as on any other Linux machine; on a BT Speak or BT Braille it uses the device
+automatically. From the repository root, with the English firmware and factory state in `firmware/blazie/`:
 
 ```sh
 ./build_linux.sh
 ./build/linux/blazie_emu
 ```
 
-On the device, with `bt = frontend`, `blazie_emu` says "BT Speak or BT Braille detected: using its keyboard, speech
-and braille display." and hands over to `blazie_emu_bt` beside it (`src/apps/blazie/bt_handover.c`), passing on `--unit`, `--firmware`,
+On the device, `blazie_emu` says "BT Speak or BT Braille detected: using its keyboard, speech and braille display."
+and hands over to `blazie_emu_bt` beside it (`src/apps/blazie/bt_handover.c`), passing on `--unit`, `--firmware`,
 `--config` (as `--state-dir`) and `--rate`; its terminal-only options have no equivalent here and are left behind.
 The device is recognised when the system's `python3` imports the device's `BTSpeak` library and its keyboard service
 answers (`kb_client.server_available()`), which is what this frontend needs to run; an ordinary PC or Raspberry Pi
 has no `BTSpeak` library, so `blazie_emu` stays in the terminal there. `blazie_emu --bt-probe` says what it finds.
-`blazie_emu --no-bt`, or `bt = off`, keeps the terminal emulator on the device, the device's keyboard left alone. If `blazie_emu_bt` or `blazie_bt` is missing beside it, `blazie_emu` says so in one line and runs in the
+`blazie_emu --no-bt`, or `bt = off` under `[input]` in its `blazie_emu.ini`, keeps the terminal emulator on the
+device. `bt = native` keeps `blazie_emu` itself, using the device's keyboard and braille display without this
+frontend or Python ([README-btspeak.md](README-btspeak.md)); it does so too when `blazie_emu_bt` is missing. If `blazie_emu_bt` or `blazie_bt` is missing beside it, `blazie_emu` says so in one line and runs in the
 terminal. `./build/linux/blazie_emu_bt` can also be run directly, with the options below. The desktop app,
 `blazie_emu_gtk`, never hands over: the BT devices have no desktop.
 

@@ -9,6 +9,7 @@
  */
 #define _GNU_SOURCE
 #include <errno.h>
+#include <fcntl.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -266,6 +267,12 @@ static void server_checks(void)
     snprintf(d, sizeof d, "absent %d [%s]", absent, msg);
     check("server: none at all (not a BT Speak) is told apart", !i && absent, d);
     btkb_close(&b);                     /* closing what never opened is safe */
+    {   /* an all-zero btkb (a static one never opened: bt = off, --no-bt) closed: its 0s are not fds -- stdin stays */
+        static btkb never;
+        int before = fcntl(0, F_GETFD) != -1;
+        btkb_close(&never);
+        check("server: a keyboard never opened, closed, leaves stdin open", !before || fcntl(0, F_GETFD) != -1, "");
+    }
 }
 
 /* ---- the panning keys, the display --------------------------------------------------------------------------------- */

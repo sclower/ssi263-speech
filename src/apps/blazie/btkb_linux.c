@@ -236,6 +236,7 @@ int btkb_open(btkb *b, const char *path, char *msg, int msglen, int *absent)
     pthread_t th;
     memset(b, 0, sizeof *b);
     b->sock = b->pipe_r = b->pipe_w = b->stop_r = b->stop_w = -1;
+    b->opened = 1;
     if (absent)
         *absent = 0;
     if (!path || !*path)
@@ -302,6 +303,8 @@ int btkb_open(btkb *b, const char *path, char *msg, int msglen, int *absent)
 
 void btkb_close(btkb *b)
 {
+    if (!b->opened)                     /* never opened: its fds are 0s, which must never be closed (stdin) */
+        return;
     if (b->running) {
         if (write(b->stop_w, "x", 1) != 1) {}
         pthread_join((pthread_t)b->thread, NULL);

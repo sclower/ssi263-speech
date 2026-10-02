@@ -1,6 +1,6 @@
-"""blazie_emu on a BT Speak or BT Braille (bt_handover.c): with [input] bt = frontend the one emulator finds the device
-and hands over to the BT frontend, blazie_emu_bt, installed beside it (Tomi: one emulator, no separate flavour for the
-BT devices); by default (auto) it uses the device's keyboard and display itself, with no hand-over.
+"""blazie_emu on a BT Speak or BT Braille (bt_handover.c): the one emulator finds the device and hands over to the BT
+frontend, blazie_emu_bt, installed beside it (Tomi: one emulator, no separate flavour for the BT devices); with
+[input] bt = native it uses the device's keyboard and display itself, with no hand-over.
 
     python3 src/apps/blazie/test_bt_handover.py BLAZIE_EMU
 
@@ -8,9 +8,9 @@ The detection, through blazie_emu --bt-probe with a stand-in BTSpeak library on 
 a file: the library and the service there is a BT device; either one missing is not.  And this machine itself, which
 is not a BT device (set BLAZIE_TEST_ON_BT_DEVICE=1 to run this on one, where it must say yes).
 The hand-over, through a copy of blazie_emu with a stand-in blazie_emu_bt (and blazie_bt) beside it, the device
-answered by BLAZIE_BT_DETECT, bt = frontend: the stand-in runs with --unit, --firmware, --config as --state-dir and
---rate, and nothing else; --no-bt, [input] bt = off, the default (auto) and no device keep this program (it runs, and
-stops at its missing firmware); with the frontend missing, one line says so and this program runs.
+answered by BLAZIE_BT_DETECT: the stand-in runs with --unit, --firmware, --config as --state-dir and --rate, and
+nothing else; --no-bt, [input] bt = off, bt = native and no device keep this program (it runs, and stops at its
+missing firmware); with the frontend missing, one line says so and this program runs.
 The control: BLAZIE_BT_BREAK=1 ignores --no-bt and the setting and loses --unit: four checks must FAIL
 (tools/linux_tests.sh judges it by its marks).
 """
@@ -106,11 +106,11 @@ def hand_over(emu, tmp):
     alone = install(emu, os.path.join(tmp, "alone"), frontend=False)
     args_file = os.path.join(tmp, "stub-args")
     fw = os.path.join(tmp, "firmware folder")      # a space in it: the argument passed whole
-    cfg = config(os.path.join(tmp, "config"), bt="frontend")
+    cfg = config(os.path.join(tmp, "config"))
     cfg_off = config(os.path.join(tmp, "config-off"), bt="off")
-    cfg_auto = config(os.path.join(tmp, "config-auto"))
+    cfg_native = config(os.path.join(tmp, "config-native"), bt="native")
     xdg = os.path.join(tmp, "xdg")                 # the usual settings, for a run given no --config
-    config(os.path.join(xdg, "ssi263-speech", "blazie-emu"), bt="frontend")
+    config(os.path.join(xdg, "ssi263-speech", "blazie-emu"))
     missing_fw = os.path.join(tmp, "no-firmware")
 
     def go(exe, args, detect):
@@ -132,7 +132,7 @@ def hand_over(emu, tmp):
             ("--no-bt: the terminal emulator", copy, ["--no-bt", "--config", cfg, "--unit", "bl-en"] + terminal, "1"),
             ("[input] bt = off: the terminal emulator", copy, ["--config", cfg_off, "--unit", "bl-en"] + terminal,
              "1"),
-            ("the default (auto): no hand-over", copy, ["--config", cfg_auto, "--unit", "bl-en"] + terminal, "1"),
+            ("[input] bt = native: no hand-over", copy, ["--config", cfg_native, "--unit", "bl-en"] + terminal, "1"),
             ("no device: the terminal emulator", copy, ["--config", cfg, "--unit", "bl-en"] + terminal, "0")):
         code, out, got = go(exe, args, detect)
         ran_terminal = "Could not start the Braille Lite 2000 (English)" in out

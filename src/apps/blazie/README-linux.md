@@ -40,24 +40,25 @@ some version -- build it on the machine itself (the three commands above), which
 
 ## BT Speak and BT Braille
 
-Run `blazie_emu`; on a BT Speak or BT Braille it uses the device itself: it takes the keyboard from the device's
-keyboard server (dots 1-6 and the space bar are the unit's keys, dots 7 and 8 its back and advance bars; on a BT
-Braille L2 or R2 is the back bar and L3 or R3 the advance bar), shows the unit's display on the braille display
-through BRLTTY, and opens its menu with M-chord and dot 7 (Z-chord and dot 7 saves and leaves). No Python is needed
-on the device. [README-btspeak.md](../../platforms/btspeak/README-btspeak.md) has the rest.
+Run `blazie_emu`; on a BT Speak or BT Braille it uses the device automatically. It says "BT Speak or BT Braille
+detected: using its keyboard, speech and braille display." and hands over to `blazie_emu_bt` beside it, the BT front
+end (#4, Leo), with the device's own dialogs for its menus, direct six-dot keyboard input and the firmware's braille
+display (`bt_handover.c`; `--unit`, `--firmware`, `--config` and `--rate` are passed on, `--config` as its
+`--state-dir`). The device is recognised when the system's `python3` imports the device's `BTSpeak` library and its
+keyboard service answers; an ordinary PC or Raspberry Pi has no `BTSpeak` library, so `blazie_emu` stays in the
+terminal there (`blazie_emu --bt-probe` says what it finds). See [the BT front end's guide](../../platforms/btspeak/README.md),
+or `README-blazie-bt.md` in the package.
 
-`bt = frontend` under `[input]` in the settings hands over to `blazie_emu_bt` instead -- #4's frontend, with the
-device's own Blazie Mode dialogs (`bt_handover.c`; `--unit`, `--firmware`, `--config` and `--rate` are passed on,
-`--config` as its `--state-dir`). It is recognised when the system's `python3` imports the device's `BTSpeak` library
-and its keyboard service answers (`blazie_emu --bt-probe` says what it finds); if `blazie_emu_bt` is not installed
-beside `blazie_emu`, one line says so and this program runs. `--no-bt`, or `bt = off`, leaves the device's keyboard
-and display alone: the terminal emulator, as everywhere else. The desktop app (`blazie_emu_gtk`) never uses them: the
-BT devices have no desktop.
+`bt = native` under `[input]` in the settings keeps `blazie_emu` itself on the device, with no Python needed: it
+takes the keyboard from the device's keyboard server and shows the unit's display on any braille display BRLTTY
+drives, its menu as plain lines BRLTTY reads ([README-btspeak.md](../../platforms/btspeak/README-btspeak.md)). It does
+the same when `blazie_emu_bt` is not installed beside it (one line says so). `--no-bt`, or `bt = off`, leaves the
+device's keyboard and display alone: the terminal emulator, as everywhere else. The desktop app (`blazie_emu_gtk`)
+never uses them: the BT devices have no desktop.
 
 `blazie_emu_bt` is built alongside `blazie_emu` and `blazie_emu_gtk`; the Linux release includes it and its worker
-`bin/blazie_bt`. It needs Python 3.11+ and the device's BTSpeak libraries, and keeps its memory and preferences in the
-BT user directory (unless `--config` is given). See [the BT frontend's guide](../../platforms/btspeak/README.md), or
-`README-blazie-bt.md` in the package.
+`bin/blazie_bt` (keep both). It needs Python 3.11+ and the device's BTSpeak libraries, and keeps its memory and
+preferences in the BT user directory (unless `--config` is given).
 
 ## Run
 
@@ -394,11 +395,11 @@ paced by the device (about a fifth of a core); each unit started from the unpack
 
 ## On a real BTSpeak
 
-On a BT Speak or BT Braille the program reads the device's own keyboard from its keyboard server, which holds the
-keypad for itself (so the input devices cannot read it, and letters mode is not needed there), and shows the unit's
-display on a braille display through BRLTTY: [README-btspeak.md](../../platforms/btspeak/README-btspeak.md).  Built
-on the device (Debian 12, arm64), its sound through ALSA's default device; the braille output and the advance bars
-verified on a BT Braille.  `[input] bt = frontend` hands over to #4's frontend instead (above).
+By default `blazie_emu` hands over to #4's front end there (above). With `[input] bt = native` it reads the
+device's own keyboard from its keyboard server itself, which holds the keypad for itself (so the input devices cannot
+read it, and letters mode is not needed there), and shows the unit's display on a braille display through BRLTTY:
+[README-btspeak.md](../../platforms/btspeak/README-btspeak.md). Built on the device (Debian 12, arm64), its sound
+through ALSA's default device; the braille output and the advance bars verified on a BT Braille.
 
 Not tried on any machine: WinDisk or PCDISK on the far end of the serial port (the tests answer the unit's storage
 call themselves), a real serial adapter, a real keyboard on the input devices (a virtual one was), sound actually

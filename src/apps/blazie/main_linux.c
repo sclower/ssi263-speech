@@ -361,9 +361,9 @@ static const char DEFAULT_INI[] =
     "evdev = auto\n"
     "; 1: only this program gets those keys while it runs (not the console, not a screen reader)\n"
     "grab = 1\n"
-    "; blazie_emu on a BT Speak or BT Braille: auto (this program uses the device's own keyboard and braille display:\n"
-    "; [btspeak] above), frontend (it hands over to blazie_emu_bt, #4's frontend) or off (the terminal only, as\n"
-    "; everywhere else; --no-bt once)\n"
+    "; blazie_emu on a BT Speak or BT Braille: auto (it hands over to blazie_emu_bt, the BT front end with the device's\n"
+    "; own dialogs; without it, as native), native (this program uses the device's keyboard and braille display\n"
+    "; itself: [btspeak] above) or off (the terminal only, as everywhere else; --no-bt once)\n"
     "bt = auto\n";
 
 static void load_keys(void)
@@ -1558,9 +1558,9 @@ int main(int argc, char **argv)
         }
         g_rate = rate;
     }
-    /* [input] bt = frontend: on a BT Speak or BT Braille, hand over to #4's frontend (bt_handover.h); never for the
-       headless runs or --show-keys.  Otherwise (auto) this program uses the device's keyboard and display itself,
-       below (btkb_linux.h, brl_linux.h) */
+    /* on a BT Speak or BT Braille: hand over to the BT front end (bt_handover.h); never for the headless runs or
+       --show-keys.  With bt = native, or the front end not installed, this program uses the device's keyboard and
+       display itself, below (btkb_linux.h, brl_linux.h) */
     if (!g_headless && !show) {
         const char *fw = fw_given ? fw_given : ini_get(g_ini, "unit", "firmware_dir", "");
         bt_hand_over(no_bt, ini_get(g_ini, "input", "bt", "auto"), unit_id, *fw ? fw : NULL, cfg_given, rate);

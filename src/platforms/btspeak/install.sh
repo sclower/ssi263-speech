@@ -51,6 +51,10 @@ fi
 mkdir -p "$PREFIX/bin" "$PREFIX/share/ssi263-speech"
 cp "$BIN/blazie_emu" "$PREFIX/bin/"
 [ -x "$BIN/blazie_files" ] && cp "$BIN/blazie_files" "$PREFIX/bin/"
+# the BT front end (#4: the device's own dialogs), which blazie_emu hands over to when it is beside it
+if [ -x "$BIN/blazie_emu_bt" ] && [ -x "$BIN/blazie_bt" ]; then
+    cp "$BIN/blazie_emu_bt" "$BIN/blazie_bt" "$PREFIX/bin/"
+fi
 # the firmware, as it is laid out (blazie_emu reads either layout); README.txt is the repository's own notes
 (cd "$FW" && find . -type f \( -iname '*.BNS' -o -iname '*.TNS' -o -name '*.state' \)) | while read -r f; do
     mkdir -p "$PREFIX/share/ssi263-speech/$(dirname "$f")"

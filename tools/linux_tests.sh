@@ -179,17 +179,17 @@ if [ -x "$EMU" ]; then
         "^FAIL +the clock, from the system time \(letters\)" "^emulator: [23] of 4 FAILED$" \
         -- env BLAZIE_KEYS_BREAK=1 python3 src/apps/blazie/test_emu_linux.py "$EMU" "$DATA" \
         --only boot,clock-keys,clock-letters
-    # one emulator everywhere (Tomi): on a BT Speak or BT Braille blazie_emu uses the device itself, or with
-    # [input] bt = frontend hands over to blazie_emu_bt (bt_handover.c) -- the detection against a stand-in BTSpeak
+    # one emulator everywhere (Tomi): on a BT Speak or BT Braille blazie_emu hands over to blazie_emu_bt
+    # (bt_handover.c), or with [input] bt = native uses the device itself -- the detection against a stand-in BTSpeak
     # library, this machine's own answer (no), the hand-over's options to a stand-in frontend, and --no-bt,
-    # bt = off, the default (auto), no device and a missing frontend keeping this program; its control ignores
-    # --no-bt and the setting and loses --unit
-    check "emulator: a BT Speak or BT Braille found: blazie_emu itself, or blazie_emu_bt with bt = frontend" \
+    # bt = off, bt = native, no device and a missing frontend keeping this program; its control ignores --no-bt and
+    # the setting and loses --unit
+    check "emulator: a BT Speak or BT Braille found, handed over to blazie_emu_bt (bt = native: blazie_emu itself)" \
         python3 src/apps/blazie/test_bt_handover.py "$EMU"
     control "emulator: BT hand-over CONTROL (--no-bt and the setting ignored, --unit lost, must fail)" \
         "^ok +detection: the BTSpeak library and its keyboard service" "^ok +detection: no BTSpeak library" \
         "^FAIL +hand-over: the device found, its options" "^FAIL +--no-bt: the terminal emulator" \
-        "^FAIL +\[input\] bt = off: the terminal emulator" "^FAIL +the default \(auto\): no hand-over" \
+        "^FAIL +\[input\] bt = off: the terminal emulator" "^FAIL +\[input\] bt = native: no hand-over" \
         "^ok +no device: the terminal emulator" \
         "^bt hand-over: 4 of 11 FAILED$" -- env BLAZIE_BT_BREAK=1 python3 src/apps/blazie/test_bt_handover.py "$EMU"
     check "emulator: libraries needed (libc, libm, libasound/libpulse; libstdc++ inside)" sh -c "! ldd $EMU | \

@@ -80,7 +80,7 @@ def serial_handshake(exe, fw, cfg, reply):
     import tty
     os.makedirs(cfg)
     with open(os.path.join(cfg, "blazie_emu.ini"), "w") as f:
-        f.write("[input]\nevdev = off\n\n[serial]\nport = pty\n")
+        f.write("[input]\nevdev = off\nbt = off\n\n[serial]\nport = pty\n")
     pid, fd = pty.fork()
     if pid == 0:
         os.execv(exe, [exe, "--firmware", fw, "--config", cfg, "--unit", "bl-en", "--no-sound"])
@@ -137,7 +137,7 @@ def menu_session(exe, fw, cfg, typed):
     if not os.path.isdir(cfg):
         os.makedirs(cfg)
         with open(os.path.join(cfg, "blazie_emu.ini"), "w") as f:
-            f.write("[input]\nevdev = off\n")
+            f.write("[input]\nevdev = off\nbt = off\n")
     pid, fd = pty.fork()
     if pid == 0:
         os.execv(exe, [exe, "--firmware", fw, "--config", cfg, "--unit", "bl-en", "--no-sound"])
@@ -180,7 +180,8 @@ def btspeak_session(exe, fw, cfg):
     import time
     os.makedirs(cfg, exist_ok=True)
     with open(os.path.join(cfg, "blazie_emu.ini"), "w") as f:
-        f.write("[input]\nevdev = off\n\n[btspeak]\ndisplay = off\n")   # never a real BRLTTY's display
+        f.write("[input]\nevdev = off\nbt = native\n\n[btspeak]\ndisplay = off\n")   # never a real BRLTTY's display,
+                                                    # nor the BT front end (it would take a BT device's real keyboard)
     path = os.path.join(cfg, "keyboard-socket")
     srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     srv.bind(path)

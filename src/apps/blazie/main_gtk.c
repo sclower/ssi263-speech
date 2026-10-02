@@ -444,9 +444,9 @@ static const char DEFAULT_INI[] =
     "evdev = auto\n"
     "; 1: only this program gets those keys while it runs (not the console, not a screen reader)\n"
     "grab = 1\n"
-    "; blazie_emu on a BT Speak or BT Braille: auto (this program uses the device's own keyboard and braille display:\n"
-    "; [btspeak] above), frontend (it hands over to blazie_emu_bt, #4's frontend) or off (the terminal only, as\n"
-    "; everywhere else; --no-bt once)\n"
+    "; blazie_emu on a BT Speak or BT Braille: auto (it hands over to blazie_emu_bt, the BT front end with the device's\n"
+    "; own dialogs; without it, as native), native (this program uses the device's keyboard and braille display\n"
+    "; itself: [btspeak] above) or off (the terminal only, as everywhere else; --no-bt once)\n"
     "bt = auto\n";
 
 /* the keys: the Braille Lite's dots, space and advance bars as the terminal shell reads them ([keys] dot1 ..

@@ -170,7 +170,9 @@ armhf_gtk() {                       # after the armhf run: $D its chroot, $CH it
     sh "$AW/mkchroot.sh" arm64 "$A64" bullseye > "$L/chroot_arm64.log" 2>&1 || { echo "arm64 chroot FAILED"; return 0; }
     sudo chroot --userspec=1000:1000 "$A64" /usr/bin/env -i PATH=/usr/bin:/bin HOME="$CH" \
         Xvfb :57 -screen 0 1024x768x24 -ac -listen tcp -nolisten unix > "$L/xvfb_arm64.log" 2>&1 &
-    sleep 3
+    for i in $(seq 60); do           # until it takes connections (display 57: TCP port 6057)
+        python3 -c "import socket; socket.create_connection(('127.0.0.1', 6057), 1)" 2>/dev/null && break; sleep 1
+    done
     gx() { sudo linux32 chroot --userspec=1000:1000 "$D" /usr/bin/env -i HOME="$CH" PATH=/usr/bin:/bin LANG=C.UTF-8 \
         PYTHONDONTWRITEBYTECODE=1 PYTHON_COLORS=0 DISPLAY=127.0.0.1:57 "$@"; }
     T="cd $CH/ssi263 && dbus-run-session -- python3 src/apps/blazie/test_emu_gtk.py build/linux/blazie_emu_gtk \

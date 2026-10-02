@@ -101,8 +101,14 @@ EMU=build/linux/blazie_emu
 TNS="$DATA/tns/TNSENG.TNS"; [ -f "$TNS" ] || TNS="$DATA/TNSENG.TNS"
 check "emulator: the keyboard (terminal, chords, letters, hold, Type 'n Speak)" ./build/linux/test_keys build
 check "emulator: braille display wiring and latch" ./build/linux/test_display
-check "emulator: BT frontend, launcher and native worker" env BLAZIE_TEST_FIRMWARE="$DATA" \
-    python3 -m unittest discover -s src/platforms/btspeak -p 'test_*.py'
+# the BT frontend runs on the BT Speak's own Python (3.11+); an older build host (Debian 11 has 3.9) can't run its
+# tests -- named as a skip, never a pass
+if python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' 2>/dev/null; then
+    check "emulator: BT frontend, launcher and native worker" env BLAZIE_TEST_FIRMWARE="$DATA" \
+        python3 -m unittest discover -s src/platforms/btspeak -p 'test_*.py'
+else
+    echo "skip  emulator: BT frontend: needs Python 3.11, the BT Speak's (this host has $(python3 -V 2>&1))"
+fi
 control "emulator: keyboard CONTROL (dots 1 and 4 swapped, must fail)" "^FAIL +keys mode: o-chord, then t" \
     "^FAIL +letters mode: computer braille" "^ok +tns: y " "^ok +terminal: F12" "^test_keys: [0-9]+ of [0-9]+ FAILED$" \
     -- env BLAZIE_KEYS_BREAK=1 ./build/linux/test_keys build

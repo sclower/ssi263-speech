@@ -66,11 +66,20 @@ jobs:
       PYTHONDONTWRITEBYTECODE: "1"
       LANG: C.UTF-8
     steps:
-      # the Pi's chroots' packages (its mkchroot.sh) and git for a real checkout, from the image's own sources: its
-      # packages already carry bullseye-security's updates, which the -dev packages must match
+      # the Pi's chroots' sources and packages (its mkchroot.sh), and git for a real checkout.  bullseye's LTS has
+      # ended and the security pool's files are gone (its index is not), so the image's few security updates go back to
+      # bullseye's and bullseye-updates' own versions (pinned above what is installed), which the -dev packages match
       - name: Debian 11's build packages
         run: |
+          for s in bullseye bullseye-updates; do echo "deb http://deb.debian.org/debian $s main"; done \
+            > /etc/apt/sources.list
+          rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources
+          for s in bullseye bullseye-updates; do printf 'Package: *\nPin: release n=%s\nPin-Priority: 1001\n\n' "$s"; done \
+            > /etc/apt/preferences.d/bullseye
           apt-get update -q
+          DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y -q --allow-downgrades > apt-downgrade.log 2>&1 \
+            || { tail -n 20 apt-downgrade.log; exit 1; }
+          echo "back to bullseye's own versions: $(grep -c '^Unpacking' apt-downgrade.log) packages"
           DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends git ca-certificates \
             build-essential g++ pkg-config python3 python3-venv libasound2-dev libpulse-dev libgtk-3-dev \
             binutils file diffutils procps

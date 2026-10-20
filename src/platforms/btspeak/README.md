@@ -127,8 +127,8 @@ combination is not a bar. A device with neither table uses R2 and R3. The choice
 and Keyboard help names the keys.
 
 The host menu offers Resume, Save memory, Quick key response, Double-speed upgrade installed, Restart the unit,
-Audio settings, Serial port, Keyboard help, Save and exit, Import programs and files, Export files to disk image,
-Import files from disk image, Firmware, Restart in one-handed mode and Restart in two-handed mode (not for the Type 'n
+Audio settings, Serial port, Keyboard help, Save and exit, Import programs and files, Copy files to a folder, Export
+files to disk image, Import files from disk image, Firmware, Restart in one-handed mode and Restart in two-handed mode (not for the Type 'n
 Speak), and Back to the factory state -- the Windows app's Firmware and Settings menus, item for item, but for the
 braille display in the window.
 The normal BT dialog controls apply while in the host menu. Menus and submenus share one terminal screen,
@@ -292,6 +292,15 @@ names them and asks (No is the default; no imports nothing). It uses the same st
 files: the worker keeps its lock, checks the result before adopting it, keeps `<memory>.before-import`, and restarts
 the unit. Files the unit has open or calls its own are kept and named in the report.
 
+**Copy files to a folder** takes the unit's files out for the device itself: it saves the unit's memory, asks for a
+folder with the same picker, and writes every file into `<unit> files` there (`Braille Lite 2000 (English) files`),
+each of the unit's folders a folder, through `blazie_files extract --lf`. Text and braille files (`.txt`, `.doc`,
+`.brl`, ...) get Linux line ends in place of the unit's lone carriage returns, so the device's editor opens them as
+they read on the unit; `.brl` files stay the unit's contracted braille in braille ASCII. A compiled BASIC program,
+and any other file with a NUL byte, is binary and copied exactly (`.src` files are the readable sources). A folder of
+that name there already is copied into, replacing files of the same names, only when you answer yes (No is the
+default). Import programs and files takes such a file back: its line ends are made the unit's again.
+
 ## Back to the factory state
 
 **Back to the factory state (erases this unit's files)** asks first (No is the default), then does what the Windows
@@ -413,7 +422,8 @@ Import tests cover picker cancellation and batch editing, replacement confirmati
 unchanged, native staged commit and backup, and continued exclusion of a second worker. A new-language test
 creates and reloads Hungarian memory when that firmware is supplied. Restart is also checked after a failed switch.
 
-Disk image tests run the real `blazie_files` on the English factory state: export after a save, an image there
+Disk image tests run the real `blazie_files` on the English factory state: a copy to a folder with Linux line ends
+and a binary file byte for byte, a folder there already used only when allowed, export after a save, an image there
 already kept unless replaced, a missing folder picker, an import that deletes asked first (declined: nothing changes),
 accepted and committed, and a file that is not an image refused before anything is staged. Serial tests drive the
 real worker: devices that will not open answered without ending the session, and a pseudo-terminal carrying s-chord's
@@ -449,7 +459,7 @@ with `BLAZIE_TEST_ON_BT_DEVICE=1`, so the test machine's own detection is expect
 | `display.py` | Firmware braille frames to the device's cells, padded to its width, sent only when changed. |
 | `profiles.py` | Read the native shared catalog, including discovered language releases and their saved-memory names. |
 | `file_import.py` | Native file picker, batch selection, replacement confirmation, and staged imports through `blazie_files`. |
-| `disk_image.py` | Export files to disk image and Import files from disk image, through `blazie_files` and the same staged copy. |
+| `disk_image.py` | Copy files to a folder, Export files to disk image and Import files from disk image, through `blazie_files` (the import through the same staged copy). |
 | `serial_port.py` | The Serial port menu, the worker's `SERIAL`, the pseudo-terminal's link. |
 | `panning.py` | The keys that pan the display in Braille Settings, as the advance bars. |
 | `user-menu-units` | The User Menu made to list the units the installed firmware can start (`install.sh`, the .deb). |

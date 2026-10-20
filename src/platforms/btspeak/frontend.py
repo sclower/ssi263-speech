@@ -18,7 +18,7 @@ from display import BrailleOutput
 from preferences import Preferences
 from profiles import Profile, discover
 from file_import import import_files
-from disk_image import export_image, import_image
+from disk_image import copy_files, export_image, import_image
 from panning import bar_codes, describe as describe_panning, panning_keys
 from serial_port import SerialPort, serial_menu
 from worker import Worker, WorkerError
@@ -110,6 +110,7 @@ def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
         if profile is not None and files_tool is not None and callable(getattr(dialogs, "request_file", None)):
             choices["p"] = _("Import programs and files")
             if callable(getattr(dialogs, "request_directory", None)):
+                choices["c"] = _("Copy files to a folder")
                 choices["x"] = _("Export files to disk image")
             choices["i"] = _("Import files from disk image")
         if units:
@@ -133,6 +134,9 @@ def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
             continue
         if choice.key == "p" and profile is not None and files_tool is not None:
             import_files(worker, dialogs, profile, files_tool, stdscr=stdscr)
+            continue
+        if choice.key == "c" and profile is not None and files_tool is not None:
+            copy_files(worker, dialogs, profile, files_tool, stdscr=stdscr)
             continue
         if choice.key == "x" and profile is not None and files_tool is not None:
             export_image(worker, dialogs, profile, files_tool, stdscr=stdscr)

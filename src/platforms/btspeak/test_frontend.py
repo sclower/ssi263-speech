@@ -224,9 +224,10 @@ class FrontendTests(unittest.TestCase):
             host_menu(Mock(), SimpleNamespace(request_choice=choice, request_file=Mock()), prefs, profile=missing,
                       files_tool=root / "blazie_files")
             host_menu(Mock(), SimpleNamespace(request_choice=choice), prefs, profile=release)
-            self.assertTrue({"p", "x", "i", "b", "l"} <= offered[0])
-            self.assertEqual({"p", "i"}, offered[1] & {"p", "x", "i", "b", "l"})   # no folder picker; no factory state
-            self.assertEqual({"b"}, offered[2] & {"p", "x", "i", "b", "l"})        # made by its recipe
+            items = {"p", "c", "x", "i", "b", "l"}
+            self.assertTrue(items <= offered[0])
+            self.assertEqual({"p", "i"}, offered[1] & items)    # no folder picker; no factory state
+            self.assertEqual({"b"}, offered[2] & items)         # made by its recipe
 
             confirm = Mock(side_effect=[False, True])
             dialogs = SimpleNamespace(request_choice=Mock(return_value=SimpleNamespace(key="b")),

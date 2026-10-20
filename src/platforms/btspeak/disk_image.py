@@ -1,6 +1,8 @@
-"""The unit's files to and from a FAT disk image, as the Windows and desktop apps' Firmware menu does.
+"""The unit's files to and from a FAT disk image, as the Windows and desktop apps' Firmware menu does, and into a folder.
 
-Export writes every file the unit holds into an image (7-Zip opens it; Linux mounts it). Import makes the unit's
+Export writes every file the unit holds into an image (7-Zip opens it; Linux mounts it). Copy files to a folder
+writes them as ordinary files (blazie_files extract --lf): each of the unit's folders a folder, text with Linux line
+ends, for the device's own editor; a binary file, such as a compiled BASIC program, as it is. Import makes the unit's
 files what an image holds -- blazie_files import, the same transaction as the other emulators -- through the staged
 copy the file import uses, so the worker keeps its lock and adopts the result only once it has checked it.
 """
@@ -39,21 +41,31 @@ def image_name(profile: Profile) -> str:
     return "{label} files.img".format(label=profile.label.replace("/", "-"))
 
 
-def export_image(worker: Worker, dialogs: ModuleType, profile: Profile, executable: Path, *,
-                 stdscr: curses.window | None = None) -> None:
-    """Every file the unit holds, as it holds them now, into an image in a folder the user chooses."""
+def folder_name(profile: Profile) -> str:
+    """Copy files to a folder's folder: "Braille Lite 2000 (English) files"."""
+    return "{label} files".format(label=profile.label.replace("/", "-"))
+
+
+def choose_folder(dialogs: ModuleType, prompt: str, *, stdscr: curses.window | None) -> Path | None:
+    """A folder from the native picker, starting in Home; None when the runtime has none (said) or it is cancelled."""
     if not callable(getattr(dialogs, "request_directory", None)):
         dialogs.show_message(_("This version of BT software has no folder picker. Update it to export files."),
                              stdscr=stdscr)
-        return
+        return None
+    folder = dialogs.request_directory(Path("/"), initial_dir=Path.home(), prompt=prompt, stdscr=stdscr)
+    return None if folder is None else Path(folder)
+
+
+def export_image(worker: Worker, dialogs: ModuleType, profile: Profile, executable: Path, *,
+                 stdscr: curses.window | None = None) -> None:
+    """Every file the unit holds, as it holds them now, into an image in a folder the user chooses."""
     if not executable.is_file():
         dialogs.show_message(_("The file tool is missing. Rebuild or reinstall the emulator."), stdscr=stdscr)
         return
-    folder = dialogs.request_directory(Path("/"), initial_dir=Path.home(),
-                                       prompt=_("Choose a folder for the disk image"), stdscr=stdscr)
+    folder = choose_folder(dialogs, _("Choose a folder for the disk image"), stdscr=stdscr)
     if folder is None:
         return
-    target = Path(folder) / image_name(profile)
+    target = folder / image_name(profile)
     if target.exists() and not dialogs.request_confirmation(
             _("{name} is there already. Replace it?").format(name=target.name), default=False, stdscr=stdscr):
         return
@@ -75,6 +87,40 @@ def export_image(worker: Worker, dialogs: ModuleType, profile: Profile, executab
         dialogs.show_message(_("Export failed: {error}").format(error=exc), stdscr=stdscr)
     finally:
         partial.unlink(missing_ok=True)
+
+
+def copy_files(worker: Worker, dialogs: ModuleType, profile: Profile, executable: Path, *,
+               stdscr: curses.window | None = None) -> None:
+    """Every file the unit holds, as it holds them now, into "<unit> files" in a folder the user chooses."""
+    if not executable.is_file():
+        dialogs.show_message(_("The file tool is missing. Rebuild or reinstall the emulator."), stdscr=stdscr)
+        return
+    folder = choose_folder(dialogs, _("Choose where to put the unit's files"), stdscr=stdscr)
+    if folder is None:
+        return
+    target = folder / folder_name(profile)
+    if target.exists() and not dialogs.request_confirmation(
+            _("{name} is there already. Copy into it, replacing files of the same names?").format(name=target.name),
+            default=False, stdscr=stdscr):
+        return
+    try:
+        with dialogs.activity(_("Copying files"), stdscr=stdscr):
+            worker.request("SAVE", "SAVED")  # its memory as it is this moment; a paused worker writes no more
+            result = subprocess.run([str(executable), "extract", str(worker.saved), str(target.resolve()), "--lf",
+                                     "--codepage={value}".format(value=profile.codepage)],
+                                    capture_output=True, text=True, errors="replace", timeout=60)
+        found = re.search(r"extracted (\d+) of (\d+) files", result.stdout)
+        if result.returncode:
+            problems = [line for line in result.stdout.splitlines() if line.startswith(("could not", "cannot"))]
+            raise WorkerError("; ".join(problems) or result.stdout.strip() or result.stderr.strip()
+                              or _("The files could not be copied."))
+        dialogs.show_message(_(
+            "Copied {count} files to {path}.\n"
+            "Each of the unit's folders is a folder there. Text files have Linux line ends;\n"
+            "compiled BASIC programs and other binary files are as the unit keeps them."
+        ).format(count=found.group(1) if found else 0, path=target), stdscr=stdscr)
+    except (OSError, subprocess.SubprocessError, WorkerError) as exc:
+        dialogs.show_message(_("Copy failed: {error}").format(error=exc), stdscr=stdscr)
 
 
 def import_image(worker: Worker, dialogs: ModuleType, profile: Profile, executable: Path, *,

@@ -11,7 +11,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
-from disk_image import export_image, image_name, import_image
+from disk_image import copy_files, export_image, folder_name, image_name, import_image
 from profiles import Profile
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -88,6 +88,32 @@ class DiskImageTests(unittest.TestCase):
         export_image(self.worker, self.dialogs, self.profile, TOOL)
         self.worker.request.assert_not_called()
         self.assertEqual(list(self.root.glob("*.img*")), [])
+
+    def test_copy_to_a_folder_gives_linux_text_and_binary_files_as_they_are(self):
+        letter, program = self.root / "letter.txt", self.root / "prog.bas"
+        letter.write_bytes(b"Dear Blazie,\nRegards\n")
+        program.write_bytes(b"\x00\n\x00\x0f\r\x02\"input\"\x00\r")   # a compiled BASIC program's sort of bytes
+        subprocess.run([str(TOOL), "add", str(self.saved), str(letter), str(program)], capture_output=True, check=True)
+        copy_files(self.worker, self.dialogs, self.profile, TOOL)
+        target = self.root / folder_name(self.profile)
+        self.assertIn("Copied 5 files to " + str(target), self.dialogs.show_message.call_args.args[0])
+        self.worker.request.assert_called_once_with("SAVE", "SAVED")
+        self.assertEqual((target / "flash startup" / "letter.txt").read_bytes(), b"Dear Blazie,\nRegards\n")
+        self.assertEqual((target / "flash startup" / "prog.bas").read_bytes(), program.read_bytes())
+        self.assertTrue((target / "ram startup" / "datebook.brl").exists())
+
+    def test_copy_into_a_folder_there_already_only_when_the_user_says_so(self):
+        target = self.root / folder_name(self.profile)
+        target.mkdir()
+        (target / "mine.txt").write_text("keep me")
+        copy_files(self.worker, self.dialogs, self.profile, TOOL)
+        self.assertFalse(self.dialogs.request_confirmation.call_args.kwargs["default"])
+        self.worker.request.assert_not_called()
+        self.assertEqual([p.name for p in target.iterdir()], ["mine.txt"])
+        self.dialogs.request_confirmation.return_value = True
+        copy_files(self.worker, self.dialogs, self.profile, TOOL)
+        self.assertTrue((target / "ram startup" / "clipboard").exists())
+        self.assertEqual((target / "mine.txt").read_text(), "keep me")
 
     def test_import_asks_before_deleting_and_declining_imports_nothing(self):
         before = self.saved.read_bytes()

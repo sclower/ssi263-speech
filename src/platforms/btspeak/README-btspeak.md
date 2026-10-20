@@ -130,8 +130,13 @@ e-chord (the Type 'n Speak: F9 x or F1 o, its name, Enter).
 
 The desktop and terminal emulators have the same as a menu item (Firmware > Load programs and files into flash; the terminal
 menu's `p`). The native BT dialog frontend also has **Import programs and files**, with a file browser and batch selection
-([README.md](README.md#import-programs-and-files)), and **Export files to disk image** and **Import files from disk
-image** ([README.md](README.md#disk-images)); typing paths is only needed for this command-line example.
+([README.md](README.md#import-programs-and-files)), and **Copy files to a folder**, **Export files to disk image** and
+**Import files from disk image** ([README.md](README.md#disk-images)); typing paths is only needed for this
+command-line example.
+
+To take a file written on the unit out for the device itself, use **Copy files to a folder** in that menu, or, with
+the unit saved (Save memory, or closed), `blazie_files extract MEMORY/english.state ~/Documents/braille-lite --lf`:
+the unit's folders become folders, text gets Linux line ends, compiled BASIC programs are copied as they are.
 
 ## The braille display
 

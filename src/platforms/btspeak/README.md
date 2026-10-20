@@ -126,11 +126,12 @@ frontend reads the key table that setup writes (`/var/lib/BTSpeak/btbraille-nav-
 combination is not a bar. A device with neither table uses R2 and R3. The choice is read each time the unit resumes,
 and Keyboard help names the keys.
 
-The host menu offers Resume, Save memory, Quick key response, Double-speed upgrade installed, Restart the unit,
-Audio settings, Serial port, Keyboard help, Save and exit, Import programs and files, Copy files to a folder, Export
-files to disk image, Import files from disk image, Firmware, Restart in one-handed mode and Restart in two-handed mode (not for the Type 'n
-Speak), and Back to the factory state -- the Windows app's Firmware and Settings menus, item for item, but for the
-braille display in the window.
+The host menu offers, in groups: Resume and Firmware (and Send Type 'n Speak key, for that model); Save memory,
+Import programs and files, Copy files to a folder, Export files to disk image and Import files from disk image; Restart
+the unit, Restart in one-handed mode and Restart in two-handed mode (not for the Type 'n Speak), and Back to the
+factory state; Quick key response, Double-speed upgrade installed, Audio settings and Serial port; then Keyboard help
+and Save and exit -- the Windows app's Firmware and Settings menus, item for item, but for the braille display in the
+window.
 The normal BT dialog controls apply while in the host menu. Menus and submenus share one terminal screen,
 and returning from a submenu keeps the previously selected row. Audio settings opens on Sound buffer.
 Leaving the host menu with Z-chord (Escape) or Resume announces "Menu closed" before the firmware resumes.

@@ -94,35 +94,34 @@ def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
     selected_key = "r"
     kind = profile.kind if profile else "bl"
     while True:
-        choices = {
-            "r": _("Resume emulator"),
-            "s": _("Save memory"),
-            "k": _("Quick key response: {state}").format(state=_("on") if preferences.quick_keys else _("off")),
-            "d": _("Double-speed upgrade installed: {state}").format(
-                state=_("on") if preferences.double_speed else _("off")),
-            "e": _("Restart the unit (keeps its files)"),
-            "o": _("Audio settings"),
-        }
-        if serial is not None:
-            choices["l"] = _("Serial port: {port}").format(port=serial.label())
-        choices["h"] = _("Keyboard help")
-        choices["q"] = _("Save and exit")
+        # in groups: the unit, its files, restarting it, the settings, then help and leaving
+        choices = {"r": _("Resume emulator")}
+        if units:
+            choices["f"] = _("Firmware: {name}").format(name=units[preferences.unit])
+        if kind == "tns":
+            choices["t"] = _("Send Type 'n Speak key")
+        choices["s"] = _("Save memory")
         if profile is not None and files_tool is not None and callable(getattr(dialogs, "request_file", None)):
             choices["p"] = _("Import programs and files")
             if callable(getattr(dialogs, "request_directory", None)):
                 choices["c"] = _("Copy files to a folder")
                 choices["x"] = _("Export files to disk image")
             choices["i"] = _("Import files from disk image")
-        if units:
-            choices["f"] = _("Firmware: {name}").format(name=units[preferences.unit])
-        if kind == "tns":
-            choices["t"] = _("Send Type 'n Speak key")
-        else:
+        choices["e"] = _("Restart the unit (keeps its files)")
+        if kind != "tns":
             # one-handed mode, the braille keyboard's: the unit switched on with dot 6 held (dot 3 leaves it)
             choices["n"] = _("Restart in one-handed mode (dot 6 held as it starts)")
             choices["w"] = _("Restart in two-handed mode (dot 3 held as it starts)")
         if profile is not None and (profile.kind == "tns" or profile.factory is None or profile.factory.is_file()):
             choices["b"] = _("Back to the factory state (erases this unit's files)")
+        choices["k"] = _("Quick key response: {state}").format(state=_("on") if preferences.quick_keys else _("off"))
+        choices["d"] = _("Double-speed upgrade installed: {state}").format(
+            state=_("on") if preferences.double_speed else _("off"))
+        choices["o"] = _("Audio settings")
+        if serial is not None:
+            choices["l"] = _("Serial port: {port}").format(port=serial.label())
+        choices["h"] = _("Keyboard help")
+        choices["q"] = _("Save and exit")
         choice = dialogs.request_choice(choices, prompt=_("Blazie emulator"), default=selected_key, stdscr=stdscr)
         if choice is None or choice.key == "r":
             return "resume"

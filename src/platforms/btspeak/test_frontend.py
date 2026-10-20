@@ -204,6 +204,21 @@ class FrontendTests(unittest.TestCase):
         self.assertFalse(any(c.startswith("KEY") and c.split()[-1] != "0" for c in commands))
         self.assertIn("R3 advances braille; L3 moves it back", help_shown.call_args.args[0])
 
+    def test_menu_is_in_groups_unit_files_restarts_settings_then_help_and_exit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "factory.state").touch()
+            shown = {}
+            for kind in ("bl", "tns"):
+                profile = Profile("bl-en", "English", root / "fw", root / "factory.state", "english.state", kind)
+                dialogs = SimpleNamespace(request_file=Mock(), request_directory=Mock(),
+                                          request_choice=lambda choices, **k: shown.setdefault(kind, list(choices)) and None)
+                host_menu(Mock(), dialogs, SimpleNamespace(quick_keys=False, double_speed=False, unit="bl-en"),
+                          {"bl-en": "English"}, profile=profile, files_tool=root / "blazie_files",
+                          serial=SimpleNamespace(label=lambda: "not connected"))
+            self.assertEqual(shown["bl"], ["r", "f", "s", "p", "c", "x", "i", "e", "n", "w", "b", "k", "d", "o", "l", "h", "q"])
+            self.assertEqual(shown["tns"], ["r", "f", "t", "s", "p", "c", "x", "i", "e", "b", "k", "d", "o", "l", "h", "q"])
+
     def test_files_factory_and_serial_are_offered_when_they_can_work(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

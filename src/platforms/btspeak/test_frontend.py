@@ -77,6 +77,14 @@ class FrontendTests(unittest.TestCase):
         self.catalog_patch = patch("frontend.discover", side_effect=catalog)
         self.catalog_patch.start()
         self.addCleanup(self.catalog_patch.stop)
+        # Braille Settings' table, never the device's own: both sides pan, L2 and R2 back, L3 and R3 forward
+        tables = tempfile.TemporaryDirectory()
+        self.addCleanup(tables.cleanup)
+        table = Path(tables.name) / "btbraille-nav-keys.kti"
+        table.write_text("bind L2 FWINLT\nbind L3 FWINRT\nbind R2 FWINLT\nbind R3 FWINRT\n")
+        tables_patch = patch("panning.TABLES", (table,))
+        tables_patch.start()
+        self.addCleanup(tables_patch.stop)
 
     def test_intro_is_shown_once_across_launches_and_preserved_by_settings(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -172,6 +180,130 @@ class FrontendTests(unittest.TestCase):
         self.assertEqual([c for c in commands if c.startswith("BARS")],
                          ["BARS " + str(n) for n in (1, 1, 1, 0, 2, 2, 2, 0, 1, 3, 2, 0)])
         self.assertFalse(any(c.startswith("KEY") and c.split()[-1] != "0" for c in commands))
+
+    def test_bars_follow_the_layout_set_in_braille_settings(self):
+        # left-right navigation and panning: L3 back, R3 forward; L2 and R2 are line up and down, not the unit's
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        table = Path(tmp.name) / "btbraille-nav-keys.kti"
+        table.write_text("bind L1 CHRLT\nbind L2 LNUP\nbind L3 FWINLT\nbind R1 CHRRT\nbind R2 LNDN\nbind R3 FWINRT\n")
+        presses = [(258, True), (258, False), (261, True), (261, False), (257, True), (257, False),
+                   (260, True), (260, False), (258, True), (261, True), (261, False), (258, False)]
+        kb, conn = keyboard([SimpleNamespace(key=key, state=state) for key, state in presses] + chord_events(MENU))
+        output, peer = socket.socketpair()
+        self.addCleanup(output.close)
+        self.addCleanup(peer.close)
+        commands = []
+        with patch("panning.TABLES", (table,)):
+            capture(SimpleNamespace(output=output, send=commands.append), kb)
+            help_shown = Mock()
+            host_menu(Mock(), SimpleNamespace(request_choice=Mock(side_effect=[SimpleNamespace(key="h"), None]),
+                                              show_message=help_shown), SimpleNamespace(quick_keys=False, double_speed=False))
+        self.assertEqual([c for c in commands if c.startswith("BARS")],
+                         ["BARS " + str(n) for n in (2, 0, 1, 0, 2, 3, 2, 0)])
+        self.assertFalse(any(c.startswith("KEY") and c.split()[-1] != "0" for c in commands))
+        self.assertIn("R3 advances braille; L3 moves it back", help_shown.call_args.args[0])
+
+    def test_files_factory_and_serial_are_offered_when_they_can_work(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "factory.state").touch()
+            offered = []
+
+            def choice(choices, **kwargs):
+                offered.append(set(choices))
+                return None
+
+            prefs = SimpleNamespace(quick_keys=False, double_speed=False)
+            bl = Profile("bl-en", "English", root / "BL2ENG.BNS", root / "factory.state", "english.state")
+            missing = Profile("bl-es", "Spanish", root / "BL2SPA.BNS", root / "gone.state", "spanish.state")
+            release = Profile("bl2_hu_1999_07", "Hungarian", root / "HU.BNS", None, "bl2_hu_1999_07.state")
+            pickers = dict(request_choice=choice, request_file=Mock(), request_directory=Mock())
+            host_menu(Mock(), SimpleNamespace(**pickers), prefs, profile=bl, files_tool=root / "blazie_files",
+                      serial=SimpleNamespace(label=lambda: "not connected"))
+            host_menu(Mock(), SimpleNamespace(request_choice=choice, request_file=Mock()), prefs, profile=missing,
+                      files_tool=root / "blazie_files")
+            host_menu(Mock(), SimpleNamespace(request_choice=choice), prefs, profile=release)
+            self.assertTrue({"p", "x", "i", "b", "l"} <= offered[0])
+            self.assertEqual({"p", "i"}, offered[1] & {"p", "x", "i", "b", "l"})   # no folder picker; no factory state
+            self.assertEqual({"b"}, offered[2] & {"p", "x", "i", "b", "l"})        # made by its recipe
+
+            confirm = Mock(side_effect=[False, True])
+            dialogs = SimpleNamespace(request_choice=Mock(return_value=SimpleNamespace(key="b")),
+                                      request_confirmation=confirm)
+            self.assertEqual(host_menu(Mock(), dialogs, prefs, profile=bl), "factory")
+            self.assertEqual(confirm.call_count, 2)                                 # declined once: the menu again
+            self.assertFalse(confirm.call_args.kwargs["default"])
+
+    def run_main(self, root, workers, actions, preferences=None):
+        said = []
+        runtime = ModuleType("BTSpeak")
+        runtime.kb_client = SimpleNamespace(server_available=lambda: True)
+        runtime.brl = SimpleNamespace(has_display=lambda: False, write=lambda text: None)
+        runtime.host = SimpleNamespace(push_self_voice=lambda value: None, pop_self_voice=lambda: None,
+                                       say=lambda text, **kwargs: said.append(text))
+        runtime.dialogs = SimpleNamespace(activity=lambda text, **kwargs: contextlib.nullcontext(), show_message=Mock(),
+                                          curses_wrapper_low_level2=lambda fn: fn(object()))
+        runtime.script = SimpleNamespace(start_log=lambda: Mock())
+        (preferences or Preferences(root / "preferences.json")).store(False, intro_shown=True)
+        with (patch.dict(sys.modules, {"BTSpeak": runtime}),
+              patch("frontend.Worker", side_effect=workers) as start,
+              patch("frontend.capture", return_value="menu"),
+              patch("frontend.host_menu", side_effect=actions),
+              patch.object(sys, "argv", ["blazie", "--backend", str(root / "backend"),
+                                        "--firmware", str(root), "--state-dir", str(root)])):
+            self.assertEqual(main(), 0)
+        return start, said, runtime.dialogs.show_message
+
+    def test_back_to_the_factory_state_deletes_the_saved_unit_and_its_update_before_starting_again(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in ("backend", "BL2ENG.BNS", "bl2_2003_warm.state"):
+                (root / name).touch()
+            saved = root / "english.state"
+            events = []
+
+            def unit(name):
+                return SimpleNamespace(braille=bytes(18), saved=saved,
+                    request=lambda cmd, reply: events.append((name, cmd)),
+                    close=lambda: events.append((name, "close")),
+                    abort=lambda: events.append((name, "abort")))
+
+            def start(*args, **kwargs):
+                if events:   # the second unit: what it finds on disk
+                    events.append(("gone", not saved.exists() and not Path(str(saved) + ".program").exists()))
+                saved.write_bytes(b"memory")
+                Path(str(saved) + ".program").write_bytes(b"update")
+                return unit("first" if not events else "second")
+
+            start, said, _shown = self.run_main(root, start, ["factory", "quit"])
+            self.assertEqual(start.call_args_list[1].args[1:4], (root / "BL2ENG.BNS", root / "bl2_2003_warm.state", saved))
+            self.assertLess(events.index(("first", "close")), events.index(("gone", True)))
+            self.assertIn("Unit back to its factory state", said)
+
+    def test_the_serial_port_is_plugged_in_whenever_a_unit_starts_and_a_missing_one_is_said(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in ("backend", "BL2ENG.BNS", "bl2_2003_warm.state", "BL2SPA.BNS", "bl2spa_fresh.state"):
+                (root / name).touch()
+            events = []
+
+            def unit(name, reply):
+                return SimpleNamespace(braille=bytes(18), saved=root / "english.state", request=lambda cmd, r: None,
+                                       answer=lambda cmd, *replies: events.append((name, cmd)) or reply,
+                                       close=lambda: events.append((name, "close")), abort=lambda: None)
+
+            preferences = Preferences(root / "preferences.json")
+            preferences.store(False, serial="/dev/ttyUSB0")
+            _start, _said, shown = self.run_main(root, [unit("first", ("SERIAL_FAILED", "No such file or directory")),
+                                                        unit("second", ("SERIAL", "/dev/ttyUSB0"))],
+                                                 ["unit:bl-es", "quit"], preferences)
+            # a firmware switch: the new unit takes the port once the old one has closed (a port is one unit's)
+            self.assertEqual(events, [("first", "SERIAL /dev/ttyUSB0"), ("first", "close"),
+                                      ("second", "SERIAL /dev/ttyUSB0"), ("second", "close")])
+            self.assertIn("/dev/ttyUSB0 is not connected: No such file or directory", shown.call_args_list[0].args[0])
+            self.assertEqual(shown.call_count, 1)
+            self.assertEqual(Preferences.load(root / "preferences.json").serial, "/dev/ttyUSB0")   # kept for next time
 
     def test_firmware_menu_returns_selection_without_changing_running_unit(self):
         prefs = Preferences(Path("unused"))
@@ -464,7 +596,7 @@ class FrontendTests(unittest.TestCase):
 
         prefs = SimpleNamespace(quick_keys=False, double_speed=False)
         for kind in ("bl", "bns", "tns"):
-            result = host_menu(Mock(), SimpleNamespace(request_choice=choice), prefs, profile=SimpleNamespace(kind=kind))
+            result = host_menu(Mock(), SimpleNamespace(request_choice=choice), prefs, profile=SimpleNamespace(kind=kind, factory=None))
             self.assertEqual(result, "restart:one-hand" if kind != "tns" else "resume")
         self.assertTrue({"n", "w"} <= offered["bl"] & offered["bns"])
         self.assertFalse({"n", "w"} & offered["tns"])

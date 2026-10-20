@@ -257,6 +257,39 @@ class WorkerTests(unittest.TestCase):
             worker.request("DOUBLE 2", "OK")
         worker.close()
 
+    def serial_bytes(self, worker, ser, until, seconds):
+        import select
+        got, end = bytearray(), time.monotonic() + seconds
+        while until not in got and time.monotonic() < end:
+            worker.receive()
+            if select.select([ser], [], [], 0.02)[0]:
+                got.extend(os.read(ser, 256))
+        return bytes(got)
+
+    def test_serial_port_on_a_pseudo_terminal_carries_the_units_bytes_and_survives_a_new_rate(self):
+        import termios
+        import tty
+        worker = self.start()
+        self.assertEqual(worker.answer("SERIAL /etc/passwd", "SERIAL", "SERIAL_FAILED")[0], "SERIAL_FAILED")
+        self.assertEqual(worker.answer("SERIAL /dev/ttyNOPE", "SERIAL", "SERIAL_FAILED"),
+                         ("SERIAL_FAILED", "could not open /dev/ttyNOPE: No such file or directory"))
+        worker.request("QUICK 0", "OK")                     # a port that would not open ends nothing
+        reply, other = worker.answer("SERIAL pty", "SERIAL", "SERIAL_FAILED")
+        self.assertEqual(reply, "SERIAL")
+        self.assertTrue(other.startswith("pty /dev/pts/"), other)
+        ser = os.open(other[4:], os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+        self.addCleanup(os.close, ser)
+        tty.setraw(ser)
+        worker.request("AUDIO 16000 auto 3 1 1 1", "OK")    # a new rate: the new unit is on the line too
+        worker.request("RESUME", "RUNNING")
+        self.serial_bytes(worker, ser, b"\x05", 6)          # its greeting over (4 s on a Pi 5)
+        worker.send("KEY 0 78")                             # s-chord (space, dots 2 3 4): storage, XON ENQ
+        sent = self.serial_bytes(worker, ser, b"\x05", 5)
+        self.assertTrue(sent.endswith(b"\x11\x05"), sent)
+        self.assertEqual(termios.tcgetattr(ser)[4], termios.B19200)
+        self.assertEqual(worker.answer("SERIAL none", "SERIAL", "SERIAL_FAILED"), ("SERIAL", "none"))
+        worker.close()
+
     def test_audio_controls_all_rates_and_buffers_keep_memory(self):
         from audio_options import AudioOptions, RATES
         from dataclasses import replace

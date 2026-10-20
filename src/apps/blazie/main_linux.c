@@ -1634,6 +1634,18 @@ static void on_signal(int sig)
     g_quit = 1;
 }
 
+/* --list-units: each unit whose firmware is in the folder and that can start -- its factory state there, or none
+   needed (a Type 'n Speak's cold start, a release's state made on its first start) -- as "id<TAB>name"; what the BT
+   Speak's installers put in its User Menu */
+static int print_units(void)
+{
+    int i, n = emc_list(g_fw_dir, g_units, EMC_MAX);
+    for (i = 0; i < n; i++)
+        if (g_units[i].present && (!g_units[i].factory[0] || exists(g_units[i].factory)))
+            printf("%s\t%s\n", g_units[i].key, g_units[i].name);
+    return 0;
+}
+
 static void usage(void)
 {
     printf("blazie_emu -- a Blazie Braille Lite 2000, Braille 'n Speak 2000 or Type 'n Speak, running its own "
@@ -1643,6 +1655,7 @@ static void usage(void)
            "  blazie_emu --no-sound           no sound card: the unit runs on silent, paced by the system clock\n"
            "  blazie_emu --no-bt              on a BT Speak or BT Braille, run here in the terminal all the same\n"
            "  blazie_emu --bt-probe           is this a BT Speak or BT Braille? (yes: exit 0)\n"
+           "  blazie_emu --list-units         the units the firmware folder can start, a line each: id, a tab, name\n"
            "  blazie_emu --help\n\n"
            "On a BT Speak or BT Braille, blazie_emu hands over to blazie_emu_bt (the device's keyboard, speech and\n"
            "braille display), with --unit, --firmware, --config (as --state-dir) and --rate.\n\n"
@@ -1662,7 +1675,7 @@ int main(int argc, char **argv)
     const char *save_to = NULL, *input = NULL, *ram_texts[16];
     rms_window win[16];
     int n_ram = 0, n_win = 0, null_out = 0, clock_check = 0, autosave = 0, show = 0, i, kind = -1, rate = 0;
-    int no_bt = 0;
+    int no_bt = 0, list_units = 0;
     double seconds = 10.0;
     char v[64];
     struct sigaction sa;
@@ -1690,6 +1703,7 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "--show-keys")) show = 1;
         else if (!strcmp(a, "--no-sound")) g_no_sound = 1;
         else if (!strcmp(a, "--no-bt")) no_bt = 1;
+        else if (!strcmp(a, "--list-units")) list_units = 1;
         else if (!strcmp(a, "--bt-probe")) {
             int yes = bt_detect();
             printf("BT Speak or BT Braille: %s\n", yes ? "yes" : "no");
@@ -1707,6 +1721,13 @@ int main(int argc, char **argv)
             return 2;
         }
 #undef TAKE
+    }
+    if (list_units) {                           /* no settings read or made, no unit started: the folder alone */
+        g_ini = ini_load(NULL);
+        if (!g_ini)
+            return 1;
+        find_firmware(fw_given);
+        return print_units();
     }
     g_headless = wav || null_out;
     if (getenv("BLAZIE_KEYS_BREAK"))

@@ -71,6 +71,9 @@ preferences in the BT user directory (unless `--config` is given).
     blazie_emu --no-sound         no sound card: the unit runs on silent, paced by the system clock
     blazie_emu --no-bt            on a BT Speak or BT Braille: the terminal emulator, the device's keys left alone
     blazie_emu --bt-probe         is this a BT Speak or BT Braille? (yes: exit 0)
+    blazie_emu --list-units       the units a firmware folder (--firmware, else the one beside the program) can
+                                  start, a line each: its id, a tab, its name -- what the BT Speak's installers
+                                  put in its User Menu; no settings read or written, no unit started
     blazie_emu --help
 
 The firmware is looked for in `firmware_dir` in the settings, else beside the program: the package's

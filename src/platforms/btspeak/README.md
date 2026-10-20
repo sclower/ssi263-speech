@@ -114,13 +114,23 @@ noninteractive sudo is required for the fallback.
 | M-chord with Dot 7: Space plus dots 1, 3, 4, and 7 | Open the host menu after all keys are released |
 | Z-chord with Dot 7: Space plus dots 1, 3, 5, 6, and 7 | Save, close the emulator and terminal, and return to the host editor |
 | Other combinations containing Dot 7 or Dot 8 | Ignored as a whole; never converted to a firmware command |
-| L3 or R3 on BT Braille | Original Braille Lite forward bar |
-| L2 or R2 on BT Braille | Original Braille Lite back bar |
+| The key set to pan right in Braille Settings (R3 by default) | Original Braille Lite forward bar |
+| The key set to pan left in Braille Settings (R2 by default) | Original Braille Lite back bar |
 | Other panel keys and all routing keys | Unassigned |
 
+The bars follow **Braille Settings → Navigation Key Setup** for Blazie mode, so the display pans with the same keys
+as everywhere else on the device: right handed, R2 back and R3 forward; left handed, L2 and L3; navigation on both
+sides, L3 back and R3 forward (or the reverse); a custom layout's keys, more than one each way if it has them. The
+frontend reads the key table that setup writes (`/var/lib/BTSpeak/btbraille-nav-keys.kti`, else the shipped
+`/etc/xdg/brltty/btbraille-nav-keys.kti`), as `blazie_emu`'s own `bt = native` route does; a key bound to a
+combination is not a bar. A device with neither table uses R2 and R3. The choice is read each time the unit resumes,
+and Keyboard help names the keys.
+
 The host menu offers Resume, Save memory, Quick key response, Double-speed upgrade installed, Restart the unit,
-Restart in one-handed mode and Restart in two-handed mode (not for the Type 'n Speak), Audio settings, Firmware,
-Import programs and files, Keyboard help, and Save and exit.
+Audio settings, Serial port, Keyboard help, Save and exit, Import programs and files, Export files to disk image,
+Import files from disk image, Firmware, Restart in one-handed mode and Restart in two-handed mode (not for the Type 'n
+Speak), and Back to the factory state -- the Windows app's Firmware and Settings menus, item for item, but for the
+braille display in the window.
 The normal BT dialog controls apply while in the host menu. Menus and submenus share one terminal screen,
 and returning from a submenu keeps the previously selected row. Audio settings opens on Sound buffer.
 Leaving the host menu with Z-chord (Escape) or Resume announces "Menu closed" before the firmware resumes.
@@ -264,6 +274,48 @@ o-chord f o, the name, e-chord opens a document. No path typing or disk-image pr
 Older BT software without `dialogs.request_file` reports that the file picker needs an update; it is not replaced
 or modified by this application.
 
+## Disk images
+
+**Export files to disk image** and **Import files from disk image** are the Windows and desktop apps' items of the
+same names, through the same `blazie_files export` and `blazie_files import` (`src/apps/blazie/blazie_files.c`).
+
+Export saves the unit's memory, asks for a folder with the native `dialogs.request_directory` picker (starting in
+Home; `/media` and `/mnt` are reachable for USB storage), and writes `<unit> files.img` there, for instance
+`Braille Lite 2000 (English) files.img`: each of the unit's folders is a folder in the image (7-Zip opens it; Linux
+mounts it with `mount -o loop`). An image of that name there already is replaced only when you answer yes (No is the
+default). The image is written beside it first and renamed into place, so a failed export leaves no partial image.
+Shown only when the installed runtime has the folder picker.
+
+Import asks for an `.img` with the file picker, then makes the unit's files what the image holds: new files added,
+changed ones rewritten, moved ones moved. Files the unit has that the image does not are deleted, so the menu first
+names them and asks (No is the default; no imports nothing). It uses the same staged copy as Import programs and
+files: the worker keeps its lock, checks the result before adopting it, keeps `<memory>.before-import`, and restarts
+the unit. Files the unit has open or calls its own are kept and named in the report.
+
+## Back to the factory state
+
+**Back to the factory state (erases this unit's files)** asks first (No is the default), then does what the Windows
+app does: the worker saves and closes, the unit's saved memory and any firmware update it was given
+(`<memory>.program`) are deleted, and the unit starts again from its factory state -- a release's from its recipe,
+a Type 'n Speak's from its cold start with the usual setup notice. It announces "Unit back to its factory state". Not
+offered for a unit whose factory state is missing (one that runs only from a saved memory), since nothing could
+start it again. The other units' memories are not touched.
+
+## Serial port
+
+**Serial port** plugs the unit's serial port into a serial device on the BT Speak (the menu lists the
+`/dev/ttyUSB*`, `/dev/ttyACM*`, `/dev/ttyS*` and `/dev/ttyAMA*` present; the user needs the `dialout` group), into a
+pseudo-terminal for a program on the device, or into nothing (the default). It is `blazie_emu`'s serial port
+(`src/apps/blazie/serial_linux.c`, README-linux.md "The serial port"): the line follows what the firmware programs
+-- rate, data bits, parity, DTR, RTS -- and its XON and XOFF pass through as bytes. A terminal program (`picocom`,
+`minicom`) or a disk tool under DOSBox then talks to the unit.
+
+A pseudo-terminal's other end is named when it is chosen, and linked as `serial` beside the saved memory; it is a new
+one each time a unit starts (a restart, a firmware switch, a sample-rate change keep the port, but a pseudo-terminal
+program must open the link again after a restart or switch). The choice is kept in `preferences.json` and used
+whenever a unit starts; a device missing then leaves the unit unplugged, says so once, and keeps the setting for next
+time. One that will not open from the menu is said and the choice set back to Not connected.
+
 ## Memory and cleanup
 
 Memory is kept under `script.getUserSubdirectory("blazie-emulator")`, separate from the desktop
@@ -282,7 +334,7 @@ driver is terminated with a bounded timeout; this exceptional case cannot guaran
 The native worker starts paused and uses a small private stdin/stdout protocol. Commands are `RESUME`,
 `PAUSE`, `KEY held chord` (decimal firmware bitmasks), `BARS down` (1 forward, 2 back, 3 both, 0 released),
 `BRAILLE`, `TNS key-name`, `QUICK 0` / `QUICK 1`, `DOUBLE 0` / `DOUBLE 1`, `HOLDSTART held` (keys held as a
-paused, not yet run unit starts), `AUDIO`,
+paused, not yet run unit starts), `SERIAL none|pty|/dev/...`, `AUDIO`,
 `AUDIO rate buffer idle keep-open pop-click tick`, `SAVE`, `IMPORT_CHECK`, `IMPORT_COMMIT`, and `QUIT`.
 `blazie_bt --catalog FIRMWARE_DIR` emits the shared catalog as JSON without starting a unit. A Braille Lite worker
 with `-` for its factory state creates its first memory from the firmware's recognized release recipe, under the
@@ -293,7 +345,9 @@ same memory lock.
 A resume invalidates import preparation. Failed preparation or commit leaves the previous unit available.
 
 Responses are `READY`, `RUNNING`, `PAUSED`, `OK` (for `QUICK`, `DOUBLE`, `TNS`, and audio changes), `SAVED`, `BYE`, or
-`ERROR reason`.
+`ERROR reason`. `SERIAL` answers `SERIAL none`, `SERIAL /dev/...`, or `SERIAL pty OTHER-END`, or `SERIAL_FAILED reason`
+with the unit unplugged; neither ends the session. The port stays with the units an import or a sample-rate change
+puts in place.
 `KEY` and `BARS` have no success response. A zero chord updates only held keys. Their "Keyboard queue full" and
 "Braille bar queue full" errors (keys typed faster than the unit reads them) are logged and the session continues;
 every other `ERROR` ends it.
@@ -306,8 +360,8 @@ The keyboard loop acknowledges server events before writing to the worker, using
 ## Braille display
 
 The emulator decodes the physical display bus, rather than reading firmware RAM or translating its speech.
-This preserves the firmware's own braille translation, cursor dots, and display messages. L3/R3 press the
-forward contact, and L2/R2 press the back contact. The firmware still controls an 18-cell line on a BT Braille 40; extra physical cells
+This preserves the firmware's own braille translation, cursor dots, and display messages. The keys that pan the
+display in Braille Settings press the forward and back contacts (R3 and R2 by default; see Keyboard). The firmware still controls an 18-cell line on a BT Braille 40; extra physical cells
 do not change the firmware's navigation or wrapping. BT Speak continues to work with speech alone.
 
 The frontend polls `BRAILLE` at up to 20 Hz, with only one outstanding request. The reply is `BRAILLE ` plus
@@ -359,6 +413,16 @@ Import tests cover picker cancellation and batch editing, replacement confirmati
 unchanged, native staged commit and backup, and continued exclusion of a second worker. A new-language test
 creates and reloads Hungarian memory when that firmware is supplied. Restart is also checked after a failed switch.
 
+Disk image tests run the real `blazie_files` on the English factory state: export after a save, an image there
+already kept unless replaced, a missing folder picker, an import that deletes asked first (declined: nothing changes),
+accepted and committed, and a file that is not an image refused before anything is staged. Serial tests drive the
+real worker: devices that will not open answered without ending the session, and a pseudo-terminal carrying s-chord's
+XON ENQ at 19200 bit/s from a unit put in place by a sample-rate change. Frontend tests cover the bars on every
+Navigation Key Setup layout (never the device's own table), the menu items offered only where they can work, the
+factory reset deleting the memory and its update between the old unit closing and the new one starting, and a saved
+serial port plugged in at every start. `tools/btspeak_deb_test.sh` checks the User Menu from the .deb and
+`install.sh`: a line per unit the firmware can start, lines for units without firmware removed, renamed lines kept.
+
 Legacy keyboard tests cover backend selection, complete-chord handoff, exclusive capture, slow and disconnected
 consumers, bounded release, concurrent-launch ownership, supervised recovery, and older dialog signatures.
 These tests simulate device operations and do not restart the machine's keyboard services.
@@ -385,7 +449,11 @@ with `BLAZIE_TEST_ON_BT_DEVICE=1`, so the test machine's own detection is expect
 | `display.py` | Firmware braille frames to the device's cells, padded to its width, sent only when changed. |
 | `profiles.py` | Read the native shared catalog, including discovered language releases and their saved-memory names. |
 | `file_import.py` | Native file picker, batch selection, replacement confirmation, and staged imports through `blazie_files`. |
-| `preferences.py` | `preferences.json` beside the saved memory: the unit, quick key response, the audio settings. |
+| `disk_image.py` | Export files to disk image and Import files from disk image, through `blazie_files` and the same staged copy. |
+| `serial_port.py` | The Serial port menu, the worker's `SERIAL`, the pseudo-terminal's link. |
+| `panning.py` | The keys that pan the display in Braille Settings, as the advance bars. |
+| `user-menu-units` | The User Menu made to list the units the installed firmware can start (`install.sh`, the .deb). |
+| `preferences.py` | `preferences.json` beside the saved memory: the unit, quick key response, the audio settings, the serial port. |
 | `audio_options.py`, `audio_menu.py` | The audio settings and their host menu. |
 | `runtime_paths.py` | The worker and firmware beside the launcher: the source tree, `build/linux`, or the package's `bin/`. |
 | `blazie` | The source-tree launcher (`./src/platforms/btspeak/blazie`). |

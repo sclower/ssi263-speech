@@ -207,8 +207,9 @@ fi
 if [ -f "$ROOT/build/linux/blazie_emu" ]; then
     cp "$ROOT/src/platforms/btspeak/install.sh" "$STAGE/install-btspeak.sh"
     cp "$ROOT/src/platforms/btspeak/uninstall.sh" "$STAGE/uninstall-btspeak.sh"
+    cp "$ROOT/src/platforms/btspeak/user-menu-units" "$STAGE/user-menu-units"   # install-btspeak.sh's User Menu
     cp "$ROOT/src/platforms/btspeak/README-btspeak.md" "$STAGE/README-btspeak.md"
-    chmod +x "$STAGE/install-btspeak.sh" "$STAGE/uninstall-btspeak.sh"
+    chmod +x "$STAGE/install-btspeak.sh" "$STAGE/uninstall-btspeak.sh" "$STAGE/user-menu-units"
 fi
 # blazie_files: a saved unit's files from the command line (README-blazie-emu.md, "Files in and out"); no sound needed
 if [ -f "$ROOT/build/linux/blazie_files" ]; then

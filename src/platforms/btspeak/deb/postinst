@@ -1,6 +1,7 @@
 #!/bin/sh
 # blazie-emu-btspeak postinst: the firmware fetched (never fatal: without a network the menu entry fetches it on
-# first start), and the units added to every BT Speak user's User Menu.  BTE_ROOT and BTE_HOMES: the tests' own.
+# first start), and every BT Speak user's User Menu made to list the units that firmware can start (user-menu-units).
+# BTE_ROOT and BTE_HOMES: the tests' own.
 set -e
 ROOT="${BTE_ROOT:-}"
 LIB="$ROOT/usr/lib/blazie-emu-btspeak"
@@ -16,24 +17,19 @@ case "$1" in
                 echo "blazie-emu-btspeak: the firmware could not be fetched now; it will be on first start"
             fi
         fi
-        # each line appended under the lock the BT Speak's own User Menu code takes (BTSpeak/user_menu.py: flock on
-        # the file), the title written only into an empty file, as it does
+        # the units the fetched firmware can start; without it (no network now), the Braille Lite alone: its entry
+        # fetches the firmware on first start and then lists the rest in that user's menu (blazie-emu-btspeak)
+        units=""
+        if [ -f "$LIB/share/ssi263-speech/BL2ENG.BNS" ]; then
+            units="$("$LIB/bin/blazie_emu" --list-units --firmware "$LIB/share/ssi263-speech")" || units=""
+        fi
+        [ -n "$units" ] || units="$(printf 'bl-en\tBraille Lite 2000 (English)')"
         for dir in ${BTE_HOMES:-/home/*}/BTSpeak; do
             [ -d "$dir" ] || continue
             um="$dir/user.menu"
             new=0
             [ -f "$um" ] || new=1
-            (
-                flock -x 9
-                if [ ! -s "$um" ]; then
-                    echo "User Menu" >&9
-                elif [ -n "$(tail -c 1 "$um")" ]; then
-                    echo >&9                # the last line had no newline: ours must not join it
-                fi
-                for entry in "Braille Lite 2000|bl-en" "Braille 'n Speak 2000|bns-en" "Type 'n Speak|tns-en"; do
-                    grep -q -- "$MENU_RUN ${entry#*|}\$" "$um" || echo "${entry%|*}: $MENU_RUN ${entry#*|}" >&9
-                done
-            ) 9>>"$um"
+            printf '%s\n' "$units" | "$LIB/user-menu-units" "$um" "$MENU_RUN" 2>/dev/null
             [ "$new" = 0 ] || chown --reference="$dir" "$um" 2>/dev/null || true
         done
         ;;

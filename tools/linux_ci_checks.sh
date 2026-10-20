@@ -65,7 +65,7 @@ if [ -f src/apps/blazie/test_btkb.c ]; then
         "^FAIL: 1 failure$" -- env BTKB_BREAK=1 ./$B/test_btkb
     check "BT Speak .deb: install and removal (scratch root, User Menus, firmware fetch)" sh tools/btspeak_deb_test.sh
     control "BT Speak .deb CONTROL (postrm never runs, must fail)" "^FAIL +removal: the menus exactly as they were" \
-        "^ok +install: three User Menu entries" "^btspeak deb: FAILED$" \
+        "^ok +install: an entry per unit the firmware can start" "^btspeak deb: FAILED$" \
         -- env BTSPEAK_DEB_BREAK=1 sh tools/btspeak_deb_test.sh
 fi
 check "emulator: the sound buffer (simulated card)" ./$B/test_audio

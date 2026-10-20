@@ -18,6 +18,9 @@ from display import BrailleOutput
 from preferences import Preferences
 from profiles import Profile, discover
 from file_import import import_files
+from disk_image import export_image, import_image
+from panning import bar_codes, describe as describe_panning, panning_keys
+from serial_port import SerialPort, serial_menu
 from worker import Worker, WorkerError
 from tns_keyboard import key_name as tns_key_name
 from audio_menu import audio_menu
@@ -35,7 +38,7 @@ def capture(worker: Worker, kb_client: ModuleType, display: BrailleOutput | None
     """Return a host action after its chord is released. ACK before doing any work."""
     keys = {kb_client.BTB_DOT1 + dot: 1 << dot for dot in range(8)}
     keys[kb_client.BTB_SPACE] = SPACE
-    bars = {kb_client.BTB_R3: 1, kb_client.BTB_R2: 2, kb_client.BTB_L3: 1, kb_client.BTB_L2: 2}
+    bars = bar_codes(kb_client, panning_keys())  # the keys that pan the display in Braille Settings
     bars_held: set[int] = set()
     keyboard = ChordKeyboard(keys)
     pending_display = False
@@ -85,7 +88,8 @@ def capture(worker: Worker, kb_client: ModuleType, display: BrailleOutput | None
 
 def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
               units: dict[str, str] | None = None, *, stdscr: curses.window | None = None,
-              profile: Profile | None = None, files_tool: Path | None = None) -> str:
+              profile: Profile | None = None, files_tool: Path | None = None,
+              serial: SerialPort | None = None) -> str:
     """The worker is paused and the keyboard is back with BRLTTY."""
     selected_key = "r"
     kind = profile.kind if profile else "bl"
@@ -98,11 +102,16 @@ def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
                 state=_("on") if preferences.double_speed else _("off")),
             "e": _("Restart the unit (keeps its files)"),
             "o": _("Audio settings"),
-            "h": _("Keyboard help"),
-            "q": _("Save and exit"),
         }
+        if serial is not None:
+            choices["l"] = _("Serial port: {port}").format(port=serial.label())
+        choices["h"] = _("Keyboard help")
+        choices["q"] = _("Save and exit")
         if profile is not None and files_tool is not None and callable(getattr(dialogs, "request_file", None)):
             choices["p"] = _("Import programs and files")
+            if callable(getattr(dialogs, "request_directory", None)):
+                choices["x"] = _("Export files to disk image")
+            choices["i"] = _("Import files from disk image")
         if units:
             choices["f"] = _("Firmware: {name}").format(name=units[preferences.unit])
         if kind == "tns":
@@ -111,6 +120,8 @@ def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
             # one-handed mode, the braille keyboard's: the unit switched on with dot 6 held (dot 3 leaves it)
             choices["n"] = _("Restart in one-handed mode (dot 6 held as it starts)")
             choices["w"] = _("Restart in two-handed mode (dot 3 held as it starts)")
+        if profile is not None and (profile.kind == "tns" or profile.factory is None or profile.factory.is_file()):
+            choices["b"] = _("Back to the factory state (erases this unit's files)")
         choice = dialogs.request_choice(choices, prompt=_("Blazie emulator"), default=selected_key, stdscr=stdscr)
         if choice is None or choice.key == "r":
             return "resume"
@@ -122,6 +133,22 @@ def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
             continue
         if choice.key == "p" and profile is not None and files_tool is not None:
             import_files(worker, dialogs, profile, files_tool, stdscr=stdscr)
+            continue
+        if choice.key == "x" and profile is not None and files_tool is not None:
+            export_image(worker, dialogs, profile, files_tool, stdscr=stdscr)
+            continue
+        if choice.key == "i" and profile is not None and files_tool is not None:
+            import_image(worker, dialogs, profile, files_tool, stdscr=stdscr)
+            continue
+        if choice.key == "l" and serial is not None:
+            serial_menu(worker, dialogs, preferences, serial, stdscr=stdscr)
+            continue
+        if choice.key == "b":
+            if dialogs.request_confirmation(_(
+                "Put this unit back as it left the factory? Its files and settings are erased, "
+                "and any firmware update it was given."
+            ), default=False, stdscr=stdscr):
+                return "factory"
             continue
         if choice.key == "t":
             name = dialogs.request_input(_("Key name, for example ctrl-o, alt-x, or f1"), stdscr=stdscr)
@@ -185,7 +212,7 @@ def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
                     "M-chord with Dot 7 opens this menu; Z-chord with Dot 7 saves and closes the terminal."
                 ), stdscr=stdscr)
                 continue
-            display_help = (_("On BT Braille, L3 or R3 advances braille; L2 or R2 moves it back. Routing keys are unused.\n")
+            display_help = (describe_panning(panning_keys()) + _("Routing keys are unused.\n")
                             if kind == "bl" else
                             _("Braille 'n Speak has no braille display or advance bars.\n"))
             dialogs.show_message(_(
@@ -201,23 +228,26 @@ def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
                 "Restart the unit switches it off and on, its files kept, for a unit that has stopped answering.\n"
                 "Restart in one-handed mode does the same with dot 6 held, as the unit's own manual says;\n"
                 "two-handed mode, with dot 3, leaves it. The unit remembers it until then.\n"
+                "Back to the factory state erases this unit's files and settings, as a new unit has.\n"
                 "Choose Firmware to switch units; each keeps its own saved memory.\n"
                 "Braille follows the selected firmware; unused cells are blank."
             ).format(display_help=display_help), stdscr=stdscr)
 
 
 def menu_session(worker: Worker, dialogs: ModuleType, preferences: Preferences, units: dict[str, str], *,
-                 profile: Profile | None = None, files_tool: Path | None = None) -> str:
+                 profile: Profile | None = None, files_tool: Path | None = None,
+                 serial: SerialPort | None = None) -> str:
     """Keep one terminal screen across host menus; return it before capturing firmware keys."""
     if not getattr(dialogs, "shared_screen", True):
-        return host_menu(worker, dialogs, preferences, units, profile=profile, files_tool=files_tool)
+        return host_menu(worker, dialogs, preferences, units, profile=profile, files_tool=files_tool, serial=serial)
     result = "resume"
     error: Exception | None = None
 
     def run(window: curses.window) -> None:
         nonlocal result, error
         try:
-            result = host_menu(worker, dialogs, preferences, units, stdscr=window, profile=profile, files_tool=files_tool)
+            result = host_menu(worker, dialogs, preferences, units, stdscr=window, profile=profile, files_tool=files_tool,
+                               serial=serial)
         except Exception as exc:
             # The platform wrapper reports and swallows exceptions. Let main report worker/save
             # failures after the wrapper has restored the terminal instead.
@@ -296,6 +326,8 @@ def main() -> int:
             name = profiles[selected].label if selected in profiles else selected
             raise WorkerError(_("Firmware or factory state is missing for {name}.").format(name=name))
 
+        serial = SerialPort(state_dir / "serial")
+
         def start_unit(key: str) -> Worker:
             profile = profiles[key]
             paths = profile.paths(args.firmware, state_dir)
@@ -308,6 +340,15 @@ def main() -> int:
                 candidate.abort()
                 raise
             return candidate
+
+        def plug_serial(current: Worker) -> None:
+            """The port chosen last time, into the unit now running (the one before it closed: a port is one unit's).
+            One not there now leaves the unit unplugged and is said; the setting is kept for next time."""
+            if preferences.serial != "none":
+                problem = serial.plug(current, preferences.serial)
+                if problem:
+                    dialogs.show_message(_("The serial port {port} is not connected: {error}").format(
+                        port=preferences.serial, error=problem))
 
         def first_start_notice(key: str) -> None:
             profile = profiles[key]
@@ -326,6 +367,7 @@ def main() -> int:
             worker = start_unit(selected)
             preferences.store(preferences.quick_keys, unit=selected)
         first_start_notice(selected)
+        plug_serial(worker)
         show_intro(dialogs, preferences)
         display = BrailleOutput(brl)
         while True:
@@ -341,7 +383,7 @@ def main() -> int:
                 exit_to_editor = True
                 break
             action = menu_session(worker, dialogs, preferences, units, profile=profiles[preferences.unit],
-                                  files_tool=args.backend.resolve().with_name("blazie_files"))
+                                  files_tool=args.backend.resolve().with_name("blazie_files"), serial=serial)
             if action == "resume":
                 say(host, _("Menu closed"))
             if action == "quit":
@@ -356,7 +398,26 @@ def main() -> int:
                     worker = start_unit(preferences.unit)
                     if action != "restart":
                         worker.request("HOLDSTART {keys}".format(keys=ONE_HAND[action[8:]]), "OK")
+                plug_serial(worker)
                 say(host, _("Unit restarted"))
+                continue
+            if action == "factory":
+                # As the Windows app's: the unit switched off (its memory saved, as always), that memory and any
+                # firmware update it was given deleted, and the unit switched on from its factory state
+                profile = profiles[preferences.unit]
+                if profile.factory is None and profile.kind != "tns":
+                    dialogs.show_message(_("Setting up this firmware for its first start. This may take a little while."),
+                                         wait=False)
+                with dialogs.activity(_("Returning the unit to its factory state")):
+                    saved = worker.saved
+                    worker.close()
+                    worker = None
+                    saved.unlink(missing_ok=True)
+                    Path(str(saved) + ".program").unlink(missing_ok=True)
+                    worker = start_unit(preferences.unit)
+                first_start_notice(preferences.unit)
+                plug_serial(worker)
+                say(host, _("Unit back to its factory state"))
                 continue
             if action.startswith("unit:"):
                 requested = action[5:]
@@ -375,6 +436,7 @@ def main() -> int:
                 selected = requested
                 preferences.store(preferences.quick_keys, unit=selected)
                 first_start_notice(selected)
+                plug_serial(worker)
     except KeyboardInterrupt:
         pass
     except (OSError, EOFError, ValueError, WorkerError, subprocess.SubprocessError) as exc:

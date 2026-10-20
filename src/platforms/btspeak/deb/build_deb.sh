@@ -28,7 +28,7 @@ install -m 755 "$ROOT/build/linux/blazie_emu" "$ROOT/build/linux/blazie_files" "
 [ -x "$ROOT/build/linux/blazie_emu_bt" ] && [ -x "$ROOT/build/linux/blazie_bt" ] \
     || { echo "no build/linux/blazie_emu_bt and blazie_bt: build them first (./build_linux.sh)"; exit 1; }
 install -m 755 "$ROOT/build/linux/blazie_emu_bt" "$ROOT/build/linux/blazie_bt" "$LIB/bin/"
-install -m 755 "$HERE/fetch-firmware" "$LIB/"
+install -m 755 "$HERE/fetch-firmware" "$ROOT/src/platforms/btspeak/user-menu-units" "$LIB/"
 if [ -n "${BTE_PIN_URL:-}${BTE_PIN_SHA:-}" ]; then
     case "${BTE_PIN_URL:-}" in https://*) ;; *) echo "BTE_PIN_URL must be an https:// URL"; exit 1 ;; esac
     echo "${BTE_PIN_SHA:-}" | grep -q -x -E '[0-9a-f]{64}' || { echo "BTE_PIN_SHA must be a SHA-256 (64 hex digits)"; exit 1; }

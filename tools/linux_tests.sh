@@ -337,7 +337,7 @@ control "emulator: BT keyboard CONTROL (dots 7 and 8 never wait, must fail)" "^F
 # firmware from a fake release of the test's own; its control never runs postrm, so the menus must not come back
 check "BT Speak .deb: install and removal (scratch root, User Menus, firmware fetch)" sh tools/btspeak_deb_test.sh
 control "BT Speak .deb CONTROL (postrm never runs, must fail)" "^FAIL +removal: the menus exactly as they were" \
-    "^ok +install: three User Menu entries" "^btspeak deb: FAILED$" -- env BTSPEAK_DEB_BREAK=1 sh tools/btspeak_deb_test.sh
+    "^ok +install: an entry per unit the firmware can start" "^btspeak deb: FAILED$" -- env BTSPEAK_DEB_BREAK=1 sh tools/btspeak_deb_test.sh
 # the Type 'n Speak's real cold reset (Timothy, Jayson): a unit the previews saved without its file system or folders,
 # told apart and set up anew with its files (test_rescue); its control leaves the old cold start on through the rescue
 # the sound buffer (audio_pace.c; Tomi: the emulator's speech stutters): the queue against a simulated card, for the

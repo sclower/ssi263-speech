@@ -13,8 +13,9 @@
 #                 spanish/, tns/, bns2000/) or all in one folder -- or a release's blazie-emu-*.tar.gz, as downloaded
 #                 (its share/ssi263-speech is used); default: the package's share/ssi263-speech, or the source tree's
 #                 firmware/blazie
-#   --menu        adds a line per unit whose firmware is there to ~/BTSpeak/user.menu (once: a unit already listed
-#                 is left alone)
+#   --menu        ~/BTSpeak/user.menu lists each unit the installed firmware can start (blazie_emu --list-units), a
+#                 line each: a unit listed already is left alone, and one of these lines whose firmware is not there
+#                 any more goes (user-menu-units)
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 if [ -x "$HERE/bin/blazie_emu" ]; then         # the unpacked package
@@ -29,7 +30,7 @@ FW=""
 for a in "$@"; do
     case "$a" in
         --menu) MENU=1 ;;
-        -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,18p' "$0"; exit 0 ;;
         *) FW="$a" ;;
     esac
 done
@@ -69,19 +70,7 @@ fi
 echo "installed $PREFIX/bin/blazie_emu, its firmware in $PREFIX/share/ssi263-speech"
 
 if [ "$MENU" = 1 ]; then
-    UM="$HOME/BTSpeak/user.menu"
-    [ -f "$UM" ] || { mkdir -p "$(dirname "$UM")"; echo "User Menu" > "$UM"; }
-    add() {    # a label and a unit, when its firmware is there and the unit is not listed yet
-        if [ -f "$PREFIX/share/ssi263-speech/$3" ] || [ -f "$PREFIX/share/ssi263-speech/$(basename "$3")" ]; then
-            if grep -q -- "blazie_emu --unit $2\$" "$UM"; then
-                echo "user menu: $1 is there already"
-            else
-                echo "$1: run $PREFIX/bin/blazie_emu --unit $2" >> "$UM"
-                echo "user menu: added $1"
-            fi
-        fi
-    }
-    add "Braille Lite 2000" bl-en BL2ENG.BNS
-    add "Braille 'n Speak 2000" bns-en bns2000/BS03ENG.BNS
-    add "Type 'n Speak" tns-en tns/TNSENG.TNS
+    mkdir -p "$HOME/BTSpeak"
+    "$PREFIX/bin/blazie_emu" --list-units --firmware "$PREFIX/share/ssi263-speech" \
+        | "$HERE/user-menu-units" "$HOME/BTSpeak/user.menu" "run $PREFIX/bin/blazie_emu --unit" 2>&1
 fi

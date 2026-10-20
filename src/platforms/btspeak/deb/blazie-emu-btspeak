@@ -1,7 +1,8 @@
 #!/bin/sh
 # blazie-emu-btspeak -- what the User Menu's entries run: the Blazie emulator with its firmware.  The package's
 # installation fetched the firmware into /usr/lib/blazie-emu-btspeak/share/ssi263-speech; when it could not (no
-# network then), it is fetched now into the user's own folder, once, and used from there.
+# network then), it is fetched now into the user's own folder, once, and used from there -- and the units it has are
+# added to the user's User Menu, which until then listed the Braille Lite alone.
 LIB=/usr/lib/blazie-emu-btspeak
 EMU="$LIB/bin/blazie_emu"
 if [ -f "$LIB/share/ssi263-speech/BL2ENG.BNS" ]; then
@@ -15,5 +16,9 @@ if [ ! -f "$MINE/BL2ENG.BNS" ]; then
         sleep 5
         exit 1
     }
+    if [ -d "$HOME/BTSpeak" ]; then
+        "$EMU" --list-units --firmware "$MINE" \
+            | "$LIB/user-menu-units" "$HOME/BTSpeak/user.menu" "run /usr/bin/blazie-emu-btspeak --unit" 2>/dev/null || true
+    fi
 fi
 exec "$EMU" --firmware "$MINE" "$@"

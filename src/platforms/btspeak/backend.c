@@ -19,6 +19,7 @@
 #include "emu_unit.h"
 #include "emu_catalog.h"
 #include "../../csrc/blazie/bl_firmware.h"
+#include "serial_linux.h"
 #include "tns_term.h"
 
 static volatile sig_atomic_t stopping;
@@ -31,6 +32,7 @@ static double next_tick, next_save;
 static unsigned char bars_queue[64];
 static int bars_count, bars_last;
 static double bars_next;
+static tty_link *tty;                   /* the unit's serial port, when it is plugged in (SERIAL) */
 
 /* A machine-readable view of the shared catalog; JSON escapes paths as well as labels. */
 static void json_string(const char *s)
@@ -169,6 +171,7 @@ static void import_commit(void)
     emu_set_quick(replacement, quick_keys);
     emu_set_double_speed(replacement, double_speed);
     emu_set_idle(replacement, idle_sound, keep_open, pop_click, tick);
+    if (tty) emu_serial_attach(replacement, 1);
     old = unit;
     unit = replacement;
     if (!save()) { unit = old; emu_destroy(replacement); return; }
@@ -215,6 +218,7 @@ static void configure_audio(int new_rate, const char *buffer, int sound, int kee
         if (!replacement) { printf("ERROR %s\n", err); return; }
         emu_set_quick(replacement, quick_keys);
         emu_set_double_speed(replacement, double_speed);
+        if (tty) emu_serial_attach(replacement, 1);
     }
     if (!emu_set_idle(replacement ? replacement : unit, sound, keep, pop, ticks)) {
         if (replacement) emu_destroy(replacement);
@@ -234,6 +238,24 @@ static void configure_audio(int new_rate, const char *buffer, int sound, int kee
     pop_click = pop;
     tick = ticks;
     puts("OK");
+}
+
+/* SERIAL none | pty | /dev/...: the unit's serial port plugged into a device or a new pseudo-terminal, or unplugged
+   (serial_linux.h, as blazie_emu's menu does).  Answers SERIAL and where it is now -- "pty" and the other end's path
+   for a pseudo-terminal -- or SERIAL_FAILED and why, the unit then unplugged; neither ends the session. */
+static void set_serial(const char *name)
+{
+    char other[PATH_MAX], err[300];
+    emu_serial_attach(unit, 0);
+    tty_close(tty);
+    tty = NULL;
+    if (!strcmp(name, "none")) { puts("SERIAL none"); return; }
+    if (strcmp(name, "pty") && strncmp(name, "/dev/", 5)) { puts("SERIAL_FAILED Not a serial device."); return; }
+    tty = tty_open(name, other, sizeof other, err, sizeof err);
+    if (!tty) { printf("SERIAL_FAILED %s\n", err); return; }
+    emu_serial_attach(unit, 1);
+    if (other[0]) printf("SERIAL pty %s\n", other);
+    else printf("SERIAL %s\n", name);
 }
 
 static void command(const char *line)
@@ -274,6 +296,8 @@ static void command(const char *line)
         fputs("BRAILLE ", stdout);
         for (i = 0; i < n; i++) printf("%02x", cells[i]);
         putchar('\n');
+    } else if (!strncmp(line, "SERIAL ", 7)) {
+        set_serial(line + 7);
     } else if (!strcmp(line, "QUIT")) {
         stopping = 1;
     } else if (sscanf(line, "BARS %d %c", &bars, &extra) == 1 && bars >= 0 && bars <= 3) {
@@ -439,6 +463,7 @@ int main(int argc, char **argv)
             bars_next = emu_time(unit) + 0.12;
         }
         emu_render(unit, pcm, rate / 100);
+        tty_pump(tty, unit);            /* the unit ran: its serial bytes may be waiting, both ways */
         if (audio && !audio_write(audio, pcm, rate / 100)) {
             pause_unit();
             puts("ERROR Sound output failed; the unit is paused.");
@@ -458,6 +483,8 @@ int main(int argc, char **argv)
     }
     pause_unit();
     if (!save()) failed = 1;
+    emu_serial_attach(unit, 0);
+    tty_close(tty);
     emu_destroy(unit);
     close(lock_fd);
     puts("BYE");

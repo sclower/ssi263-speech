@@ -1,0 +1,55 @@
+#!/bin/sh
+# user-menu-units MENU RUN < UNITS -- a BT Speak User Menu (MENU: ~/BTSpeak/user.menu) made to list the units that
+# can start, and no others: UNITS is what `blazie_emu --list-units` prints ("id<TAB>name" a line), and each unit's
+# line is "name: RUN id".  A unit listed already keeps its line, whatever its label (the user may have renamed it);
+# a line of ours (": RUN id") whose unit is not in UNITS goes; every other line stays exactly as it was.  Under the
+# lock the BT Speak's own User Menu code takes (BTSpeak/user_menu.py: flock on the file), written in place, so the
+# file keeps its owner and mode; a missing or empty menu gets the title first, as user_menu.py writes it.
+# install.sh and the .deb's postinst and launcher use it.
+set -e
+MENU="$1"
+RUN="$2"
+[ -n "$MENU" ] && [ -n "$RUN" ] || { echo "user-menu-units MENU RUN < UNITS"; exit 2; }
+UNITS="$(cat)"
+export UNITS RUN
+(
+    flock -x 9
+    kept="$(mktemp)"
+    trap 'rm -f "$kept"' EXIT
+    awk '
+        BEGIN {
+            n = split(ENVIRON["UNITS"], rows, "\n")
+            for (i = 1; i <= n; i++) {
+                tab = index(rows[i], "\t")
+                if (!tab) continue
+                id = substr(rows[i], 1, tab - 1)
+                label = substr(rows[i], tab + 1)
+                gsub(/[:\r]/, "", label)                    # the menu line is "label: action"
+                name[id] = label
+                order[++units] = id
+            }
+            ours = ": " ENVIRON["RUN"] " "
+        }
+        {
+            at = index($0, ours)
+            id = at ? substr($0, at + length(ours)) : ""
+            if (id != "" && id !~ /[ \t]/) {               # a line of ours, for unit id
+                if (!(id in name)) {
+                    print "user menu: removed " substr($0, 1, at - 1) " (its firmware is not there)" > "/dev/stderr"
+                    next
+                }
+                listed[id] = 1
+            }
+            print
+        }
+        END {
+            if (NR == 0) print "User Menu"
+            for (i = 1; i <= units; i++)
+                if (!(order[i] in listed)) {
+                    print name[order[i]] ": " ENVIRON["RUN"] " " order[i]
+                    print "user menu: added " name[order[i]] > "/dev/stderr"
+                }
+        }
+    ' "$MENU" > "$kept"
+    cmp -s "$kept" "$MENU" || cat "$kept" > "$MENU"
+) 9>>"$MENU"

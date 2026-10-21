@@ -15,9 +15,11 @@
  *     speakout:soundingboard  Sounding Board (GW Micro)   so_voice.h (SBLOAD.COM + SB.COM 2.7: sov_create_sb)  with
  *                                                         SSV_HAVE_SOUNDINGBOARD (0.8.5; last in the table, after the
  *                                                         Braille Lite's release voices)
+ *     smartalk:smartalk   SmarTalk (Automated Functions)  smartalk/st_voice.h (S_TALK.EXE 1.21)  with SSV_HAVE_SMARTALK
+ *                                                         (after the Sounding Board; NVDA only so far)
  *
  * Each engine is a table of six functions -- create, set, speak, render, cancel, destroy -- over its voice's own API
- * (blv_, sov_, amv_, asv_, mbv_); a voice whose engine is not compiled in is still listed, and ssv_create says why it cannot
+ * (blv_, sov_, amv_, asv_, mbv_, stv_); a voice whose engine is not compiled in is still listed, and ssv_create says why it cannot
  * make it.  The firmware is never built in: it comes from a folder laid out as the repository's firmware/ (the paths
  * in ssv_info.files), the user's or the installer's.
  *
@@ -50,12 +52,13 @@ extern "C" {
 #define SSV_ACCENT_SA 3            /* Aicom's Accent SA (as_voice.h) */
 #define SSV_MOCKINGBOARD 4         /* Sweet Micro Systems' Mockingboard (mockingboard/mb_voice.h) */
 #define SSV_SOUNDINGBOARD 5        /* GW Micro's Sounding Board: the Speak-Out's voice on its DOS drivers (so_voice.h) */
+#define SSV_SMARTALK 6             /* Automated Functions' SmarTalk: its DOS text-to-speech (smartalk/st_voice.h) */
 
 typedef struct {
     const char *id;                /* "blazie:blazie": the NVDA driver module and its voice, as the SAPI tokens carry it */
     const char *name;              /* the NVDA driver's name for it, UTF-8 */
     const char *lang;              /* "en", "es", "de", "it", "sk" */
-    int engine;                    /* SSV_BLAZIE ... SSV_SOUNDINGBOARD */
+    int engine;                    /* SSV_BLAZIE ... SSV_SMARTALK */
     int slot;                      /* voices of one slot share one unit in a bank (the two Accents: one card) */
     const char *files[4];          /* its firmware, relative to the firmware folder, "/"-separated; NULL after the last */
 } ssv_info;
@@ -83,10 +86,12 @@ typedef struct {
     int rate, pitch, volume;       /* 0-100: 50, 50, 100 = each unit's factory rate and pitch, full volume (every voice
                                       takes a volume up to 200, louder and clipped at full scale: Android's slider) */
     int tone;                      /* the NVDA variant: the Braille Lite's tone 0-26 (7), the Speak-Out's A-Z as 0-25
-                                      (8 = I), the Accent-mini's voice characteristic 0-9 (5); unused by the Accent SA */
+                                      (8 = I), the Accent-mini's voice characteristic 0-9 (5), the SmarTalk's tone A-Z
+                                      as 0-25 (8 = I); unused by the Accent SA */
     int pack;                      /* "Shorten pauses between sentences": the Braille Lite, the Speak-Out (1) */
     int join;                      /* "Join phrases": the Speak-Out's word delay (1) */
-    int inflection;                /* the Accents' intonation 0-100 (100 = full) */
+    int inflection;                /* the Accents' intonation 0-100 (100 = full); the SmarTalk's inflection is on from
+                                      50 (below: monotone) */
     int numbers;                   /* "Custom number processing": the Braille Lite, the Accents (1) */
     int run_ahead;                 /* the Braille Lite's "Run the unit ahead", EXPERIMENTAL (0) */
     int line_lift;                 /* the Braille Lite's "Lift line starts (as note-taking mode)" (0): the first

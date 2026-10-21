@@ -22,6 +22,7 @@ The units are the 0.7 add-ons' drivers, unchanged, moved whole by the build into
 | Speak-Out | `nvda/speakout/synthDrivers/speakout.py` | `_ssi263_speakout` (`build_speakout.py`) |
 | Accent SA, Accent-mini | `nvda/accent/synthDrivers/accentmini.py` | `_ssi263_accent` (`build_accent.py`) |
 | Mockingboard | `nvda/mockingboard/synthDrivers/mockingboard.py` | `_ssi263_mockingboard` (`build_ssi263.py`; only with its firmware file) |
+| SmarTalk | `nvda/smartalk/synthDrivers/smartalk.py` | `_ssi263_smartalk` (`build_ssi263.py`; only with its S_TALK.EXE) |
 
 Each unit's `notifySynth` is set to this driver, so NVDA's speech manager accepts its index and done notifications.
 

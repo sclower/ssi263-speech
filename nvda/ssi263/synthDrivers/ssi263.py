@@ -2,13 +2,13 @@
 """NVDA synthesizer driver: Votrax SC-02 / SSI-263 (emulated) -- every unit of this project in one driver (0.8).
 
 The units are the 0.7 add-ons' own drivers, unchanged, in this add-on's private package (synthDrivers/_ssi263_unified:
-blazie.py, speakout.py, accentmini.py, and mockingboard.py, each with its engine; NVDA lists no module whose name
-starts with "_").  This driver runs ONE of them at a time, chosen by the firmware type, and passes NVDA's speech,
+blazie.py, speakout.py, accentmini.py, mockingboard.py and smartalk.py, each with its engine; NVDA lists no module whose
+name starts with "_").  This driver runs ONE of them at a time, chosen by the firmware type, and passes NVDA's speech,
 settings and notifications through: what you hear is that driver's, byte for byte (nvda/tools/unified_driver_equiv.py).
 
 Settings (investigation/design-0.8-nvda-addon.md, its revisions after Astra's Reply 161, and Reply 163):
   firmware type  the units whose firmware is here (Braille Lite 2000, Speak-Out, Accent SA, Accent-mini, Mockingboard,
-                 Mockingboard early)
+                 Mockingboard early, SmarTalk)
   voice          that firmware's languages, with their language codes, so NVDA's language switching works
   the rest       the unit's own settings, as its 0.7 add-on had them
 Each firmware type keeps its own values (Tomi).  Where they are kept is ONE place: NVDA's config, this driver's
@@ -38,6 +38,10 @@ try:
     from ._ssi263_unified import mockingboard
 except ImportError:              # staged only with its firmware file (build_ssi263.py)
     mockingboard = None
+try:
+    from ._ssi263_unified import smartalk
+except ImportError:              # staged only with its S_TALK.EXE (build_ssi263.py)
+    smartalk = None
 
 # firmware type: (its name, the unit's driver module, {language: that driver's voice})
 FIRMWARE_TYPES = OrderedDict([
@@ -60,6 +64,9 @@ if mockingboard is not None:
     FIRMWARE_TYPES["mockingboard"] = ("Mockingboard", mockingboard, OrderedDict([("en", "mockingboard")]))
     # the earlier text-to-speech of Mockingboard disk 1: its own rules ("Mocking-bo-wrd", "dough-lars")
     FIRMWARE_TYPES["mockingboardearly"] = ("Mockingboard, early", mockingboard, OrderedDict([("en", "early")]))
+# Automated Functions' SmarTalk: the box's own DOS text-to-speech (S_TALK.EXE 1.21), after the others
+if smartalk is not None:
+    FIRMWARE_TYPES["smartalk"] = ("SmarTalk", smartalk, OrderedDict([("en", "smartalk")]))
 LANGUAGES = {"en": "English", "es": "Español", "de": "Deutsch", "it": "Italiano", "sk": "Slovenčina"}
 # firmware types that are gone, and where their users land: (the type now, the language it was).  A saved one loads as
 # that type in that language, its own saved values filling in only what the new type has none of (_saved); the next

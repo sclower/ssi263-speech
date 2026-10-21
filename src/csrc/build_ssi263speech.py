@@ -7,8 +7,9 @@ Into build/win/<arch>/:
 
   ssi263speech.dll   the chip, the Braille Lite (board on MAME's Z180, host, voice, number words), the Accent SA
                      (board on MAME's 8085, host, voice), the Speak-Out (MAME's
-                     V40) and the Accent-mini (MAME's 8086) -- behind voices.h, the voice table.  It exports the ssv_
-                     table and every voice API (blv_, asv_, sov_, amv_, ssi263_); the SAPI engine (sapi/ssi263_sapi.cpp)
+                     V40), the Accent-mini and the SmarTalk (MAME's 8086) -- behind voices.h, the voice table.  It
+                     exports the ssv_ table and every voice API (blv_, asv_, sov_, amv_, mbv_, stv_, ssi263_); the SAPI
+                     engine (sapi/ssi263_sapi.cpp)
                      loads it with LoadLibrary from its own folder.
   ssi263_serve.exe   sapi/ssi_serve.c: the SAPI pipe protocol (OSP4) over that DLL, loaded the way the SAPI engine
                      loads it -- sapi/ssi_serve.py ported, so sapi/test_native.py can hold the two to each other over
@@ -78,6 +79,11 @@ def units():
         u = [(flags + inc("pc86", "soundingboard") + ["-DSO_HAVE_SOUNDINGBOARD"], s) if s == "speakout/so_voice.c"
              else (flags, s) for flags, s in u]
         have += ["-DSSV_HAVE_SOUNDINGBOARD", "-DSO_HAVE_SOUNDINGBOARD"]
+    # the SmarTalk: Automated Functions' S_TALK.EXE, on the same pc86 as the Accent-mini (st_voice.h)
+    if "-DSSV_HAVE_ACCENTMINI" in have and os.path.isfile(os.path.join(SRC, "smartalk", "st_voice.c")):
+        st = FRONT + inc("cpu", "pc86", "smartalk")
+        u += [(st, "smartalk/%s.c" % n) for n in ("st_host", "st_voice")]
+        have.append("-DSSV_HAVE_SMARTALK")
     if os.path.isfile(os.path.join(SRC, "mockingboard", "mb_voice.c")):      # mb-voice's sources (mb_voice.h, 0.8)
         mb = ["-O2", "-std=gnu99", "-ffp-contract=off", "-w"] + inc("cpu", "mockingboard", "")
         u += [(mb, "cpu/m6502.c")] + [(mb, "mockingboard/%s.c" % n)

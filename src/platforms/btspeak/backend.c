@@ -65,7 +65,8 @@ static int catalog(const char *directory)
         fputs(",\"factory\":", stdout); json_string(u->factory);
         fputs(",\"saved\":", stdout); json_string(u->saved);
         fputs(",\"kind\":", stdout); json_string(kind);
-        printf(",\"codepage\":%d}", u->codepage);
+        printf(",\"codepage\":%d", u->codepage);
+        printf(",\"release\":%s}", u->release >= 0 ? "true" : "false");   /* the host menu's More languages */
     }
     puts("]");
     free(units);

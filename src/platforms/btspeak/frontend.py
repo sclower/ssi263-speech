@@ -18,6 +18,7 @@ from display import BrailleOutput
 from preferences import Preferences
 from profiles import Profile, discover
 from file_import import import_files
+from firmware_menu import choose_unit, launcher
 from disk_image import copy_files, export_image, import_image
 from panning import bar_codes, describe as describe_panning, panning_keys, usable
 from serial_port import SerialPort, serial_menu
@@ -89,8 +90,10 @@ def capture(worker: Worker, kb_client: ModuleType, display: BrailleOutput | None
 def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
               units: dict[str, str] | None = None, *, stdscr: curses.window | None = None,
               profile: Profile | None = None, files_tool: Path | None = None,
-              serial: SerialPort | None = None, kb_client: ModuleType | None = None) -> str:
-    """The worker is paused and the keyboard is back with BRLTTY."""
+              serial: SerialPort | None = None, kb_client: ModuleType | None = None,
+              releases: frozenset[str] = frozenset(), run: str | None = None) -> str:
+    """The worker is paused and the keyboard is back with BRLTTY.  releases: the units under More languages; run: what
+    a User Menu line runs to start a unit (Ctrl+C on one in the Firmware choice), None for no copying."""
     selected_key = "r"
     kind = profile.kind if profile else "bl"
     while True:
@@ -166,9 +169,9 @@ def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
                 return "resume"
             continue
         if choice.key == "f" and units:
-            selected = dialogs.request_choice(units, prompt=_("Choose firmware"), default=preferences.unit, stdscr=stdscr)
-            if selected is not None and selected.key != preferences.unit:
-                return "unit:" + selected.key
+            selected = choose_unit(dialogs, units, releases, preferences.unit, run=run, stdscr=stdscr)
+            if selected is not None and selected != preferences.unit:
+                return "unit:" + selected
             continue
         if choice.key == "k":
             quick = not preferences.quick_keys
@@ -240,11 +243,12 @@ def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
 
 def menu_session(worker: Worker, dialogs: ModuleType, preferences: Preferences, units: dict[str, str], *,
                  profile: Profile | None = None, files_tool: Path | None = None,
-                 serial: SerialPort | None = None, kb_client: ModuleType | None = None) -> str:
+                 serial: SerialPort | None = None, kb_client: ModuleType | None = None,
+                 releases: frozenset[str] = frozenset(), run: str | None = None) -> str:
     """Keep one terminal screen across host menus; return it before capturing firmware keys."""
     if not getattr(dialogs, "shared_screen", True):
         return host_menu(worker, dialogs, preferences, units, profile=profile, files_tool=files_tool, serial=serial,
-                         kb_client=kb_client)
+                         kb_client=kb_client, releases=releases, run=run)
     result = "resume"
     error: Exception | None = None
 
@@ -252,7 +256,7 @@ def menu_session(worker: Worker, dialogs: ModuleType, preferences: Preferences, 
         nonlocal result, error
         try:
             result = host_menu(worker, dialogs, preferences, units, stdscr=window, profile=profile, files_tool=files_tool,
-                               serial=serial, kb_client=kb_client)
+                               serial=serial, kb_client=kb_client, releases=releases, run=run)
         except Exception as exc:
             # The platform wrapper reports and swallows exceptions. Let main report worker/save
             # failures after the wrapper has restored the terminal instead.
@@ -327,6 +331,8 @@ def main() -> int:
             profiles = discover(args.backend, args.firmware)
         selected = args.unit or preferences.unit
         units = {profile.key: profile.label for profile in profiles.values() if profile.available(args.firmware, state_dir)}
+        releases = frozenset(profile.key for profile in profiles.values() if profile.release)
+        run = launcher(args.backend)    # what a unit copied to the User Menu runs
         if selected not in units:
             name = profiles[selected].label if selected in profiles else selected
             raise WorkerError(_("Firmware or factory state is missing for {name}.").format(name=name))
@@ -389,7 +395,7 @@ def main() -> int:
                 break
             action = menu_session(worker, dialogs, preferences, units, profile=profiles[preferences.unit],
                                   files_tool=args.backend.resolve().with_name("blazie_files"), serial=serial,
-                                  kb_client=kb_client)
+                                  kb_client=kb_client, releases=releases, run=run)
             if action == "resume":
                 say(host, _("Menu closed"))
             if action == "quit":

@@ -1,19 +1,20 @@
 #!/bin/sh
-# blazie-emu-btspeak postrm: on removal, the User Menu entries and each user's fetched firmware go (prerm took the
-# system's); the units' saved memory and settings (~/.config/ssi263-speech/blazie-emu) stay, as any program's do.
-# BTE_HOMES: the tests' own.
+# blazie-emu-btspeak postrm: on removal, the User Menu's lines for the emulator (the Blazie menu's, and any unit copied
+# from it) and each user's fetched firmware go (prerm took the system's); the units' saved memory and settings
+# (~/.config/ssi263-speech/blazie-emu) stay, as any program's do.  BTE_HOMES: the tests' own.
 set -e
 MENU_RUN="run /usr/bin/blazie-emu-btspeak --unit "
+MENU_OPEN=": menu /usr/lib/blazie-emu-btspeak/blazie"
 
 case "$1" in
     remove|purge)
         for home in ${BTE_HOMES:-/home/*}; do
             um="$home/BTSpeak/user.menu"
-            if [ -f "$um" ] && grep -q -- "$MENU_RUN" "$um"; then
+            if [ -f "$um" ] && grep -q -F -e "$MENU_RUN" -e "$MENU_OPEN" "$um"; then
                 (                           # under the BT Speak's own lock (user_menu.py), written in place: the
                     flock -x 9              # file keeps its owner and mode, and every line but ours
                     kept="$(mktemp)"
-                    grep -v -- "$MENU_RUN" "$um" > "$kept" || true
+                    grep -v -F -e "$MENU_RUN" -e "$MENU_OPEN" "$um" > "$kept" || true
                     cat "$kept" > "$um"
                     rm -f "$kept"
                 ) 9<"$um"

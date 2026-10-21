@@ -21,9 +21,11 @@ terminal:
     cd ssi263-speech-*-linux-aarch64
     ./install-btspeak.sh --menu
 
-That is all: each unit the package's firmware can start is now in the User Menu ("Braille Lite 2000 (English)", "Type
-'n Speak (English)", ...: `blazie_emu --list-units`). Run it again after adding firmware and the new units are added;
-a unit whose firmware has gone leaves the menu.
+That is all: the User Menu now has **Blazie Emulator**, which opens the Blazie menu: each unit the installed firmware
+can start ("Braille Lite 2000 (English)", "Type 'n Speak (English)", ...), with the language releases under **More
+languages**, as in the desktop apps' Firmware menu. The menu is made each time it opens (`blazie_emu --list-units`), so
+firmware added or removed later shows there with nothing to run again. Ctrl+C on a unit in it, as anywhere in the BT
+Speak's menus, copies that unit to the User Menu, to start it from there directly.
 The package carries the firmware. `./uninstall-btspeak.sh` removes it again. The package must have been built on
 Debian 12 or older (a BT Speak's system: glibc 2.36); one built on Debian 13 will not start.
 
@@ -34,12 +36,14 @@ Install it with apt:
     sudo apt install ./blazie-emu-btspeak_<version>_arm64.deb
 
 It puts the emulator in `/usr/lib/blazie-emu-btspeak`, fetches the firmware from this project's own release download
-(checked against its published SHA-256: the firmware is never inside the .deb), and adds each unit that firmware can
-start to the User Menu of every BT Speak user on the device; an upgrade removes the lines of units it no longer has
-and keeps the others as their users named them. Without a network at the time, it installs all the same with the
-Braille Lite alone in the menu: that entry fetches the firmware on first start and then adds the rest of its units to
-that user's menu. `sudo apt remove blazie-emu-btspeak` takes the program, the fetched firmware and its menu lines
-away; the rest of the User Menu is left exactly as it was, and the units' saved memory stays.
+(checked against its published SHA-256: the firmware is never inside the .deb), and adds **Blazie Emulator** to the
+User Menu of every BT Speak user on the device, opening the Blazie menu above (`/usr/lib/blazie-emu-btspeak/blazie.menu`).
+Upgrading from a package that put a line a unit in the User Menu takes those three lines away (the Blazie menu has
+them); one its user renamed stays. Without a network at the time, it installs all the same, and the Blazie menu has
+the Braille Lite alone: that item fetches the firmware on first start, into that user's own folder, and the menu
+lists the rest from then on. `sudo apt remove blazie-emu-btspeak` takes the program, the fetched firmware and its
+menu lines away (the Blazie Emulator line, and any unit copied from it with Ctrl+C); the rest of the User Menu is
+left exactly as it was, and the units' saved memory stays.
 
 Built with `src/platforms/btspeak/deb/build_deb.sh` after `./build_linux.sh`, on Debian 12 or older. The firmware
 comes from the release pinned in `deb/fetch-firmware` (v0.7.0's `blazie-emu-0.7.0-linux-aarch64.tar.gz`, by its
@@ -73,11 +77,12 @@ The firmware is not in the repository: put it in `firmware/blazie/` first (its R
 the folder: `src/platforms/btspeak/install.sh --menu /path/to/firmware`.
 
 `install.sh` puts `blazie_emu` and `blazie_files` in `~/.local/bin` and the firmware in `~/.local/share/ssi263-speech`
-(no root needed; `PREFIX=/usr/local sudo -E ...` for every user). `--menu` makes the BT Speak's User Menu
-(`~/BTSpeak/user.menu`) list each unit the installed firmware can start, a line each -- every language and release
-whose firmware is there (`blazie_emu --list-units`; `user-menu-units` writes it, under the menu's own lock): a unit
-listed already keeps its line, and one whose firmware is no longer installed is removed. Choose one there to start it. `src/platforms/btspeak/uninstall.sh` takes it all away again (the
-units' saved memory, in `~/.config/ssi263-speech/blazie-emu`, is kept).
+(no root needed; `PREFIX=/usr/local sudo -E ...` for every user), and the Blazie menu in `~/.local/lib/blazie-emu`.
+`--menu` gives the BT Speak's User Menu (`~/BTSpeak/user.menu`) the **Blazie Emulator** line that opens it
+(`user-menu-entry` writes it, under the menu's own lock; a line already opening it, renamed or not, is left alone, and
+the three lines a unit each that `--menu` wrote before go). `src/platforms/btspeak/uninstall.sh` takes it all away
+again, the units copied from the Blazie menu too (the units' saved memory, in `~/.config/ssi263-speech/blazie-emu`,
+is kept).
 
 ## Keys
 

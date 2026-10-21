@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""The Blazie menu: the BT Speak's own menu of the units the installed firmware can start, made each time it opens
+(an executable .menu is run and its output is the menu: devdocs' Menu Files).  The User Menu has one line for it,
+"Blazie Emulator: menu .../blazie.menu" (user-menu-entry).  As the desktop apps' Firmware menu: the catalog's units,
+then the language releases (bl_languages.txt's) in More languages, which is this program again, as
+blazie-languages.menu beside it (a menu action takes a path and nothing more).  Ctrl+C on any item copies it to the
+User Menu, the menu reader's own.
+
+PROGRAM is what lists the units and what an item runs: the .deb's and install.sh's copies have their own written in.
+"""
+
+import shlex
+import subprocess
+import sys
+from pathlib import Path
+
+try:
+    from BTSpeak.intl import gettext as _
+except ImportError:                     # not on a BT Speak: the tests'
+    def _(text: str) -> str:
+        return text
+
+PROGRAM = "blazie_emu"
+
+
+def item(label: str, action: str) -> None:
+    # a ":" ends the label, a "#" starts a comment, braces are the menu's markers; "!" first: no shortcut letter
+    label = label.replace(":", ",").replace("#", "").replace("{", "(").replace("}", ")")
+    print("!{label}: {action}".format(label=label, action=action))
+
+
+def notice(message: str) -> None:
+    # a menu with no items is never shown: one that says why, Enter repeating it
+    item(message, "run say-message " + shlex.quote(message))
+
+
+def main() -> int:
+    languages = Path(sys.argv[0]).name == "blazie-languages.menu"
+    print(_("More Languages") if languages else _("Blazie Emulator"))
+    try:
+        listed = subprocess.run([PROGRAM, "--list-units"], capture_output=True, text=True, timeout=30).stdout
+    except (OSError, subprocess.SubprocessError):
+        listed = ""
+    units = [line.split("\t") for line in listed.splitlines() if line.count("\t") >= 1]
+    shown = [row for row in units if (row[2:] == ["release"]) == languages]
+    for row in shown:
+        item(row[1], "run {program} --unit {key}".format(program=PROGRAM, key=row[0]))
+    if not languages and any(row[2:] == ["release"] for row in units):
+        item(_("More Languages"), "menu " + str(Path(sys.argv[0]).with_name("blazie-languages.menu")))
+    if not units:
+        notice(_("The Blazie emulator could not list its firmware"))
+    elif languages and not shown:       # More languages, its releases gone since the menu above was drawn
+        notice(_("No more languages are installed"))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

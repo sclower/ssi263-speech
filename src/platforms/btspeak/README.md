@@ -214,6 +214,11 @@ preference write restores the previous audio settings. Use **Back** or cancel to
 Open M-chord with Dot 7, then **Firmware**. The menu reads the same native `emu_catalog` as the desktop and terminal emulators. It lists installed, supported
 firmware with a factory state, an existing saved memory, or a supported first-start recipe. A failed switch leaves the previous unit available; a successful switch
 saves it before running the new unit. The choice is remembered, or override it with `--unit bl-en` etc.
+As in the desktop apps' Firmware menu, the catalog's own units (the eight below) are listed first and the language
+releases are under **More languages**; Escape there returns to the list. Ctrl+C on a unit, in either list, copies it to
+the User Menu as the BT Speak's own menus do: it asks for the item's name (the unit's, to start with), and the new line
+starts that unit (`run .../blazie_emu --unit bl-en`; with the .deb, `/usr/bin/blazie-emu-btspeak`, which finds a
+user's own fetched firmware).
 The switch announcement names the selected model and language.
 The same nested and flat firmware-folder layouts as the original terminal emulator are accepted. Additional releases
 are discovered by their image content, not their filenames, in the firmware folder or one directory below it.
@@ -433,8 +438,13 @@ real worker: devices that will not open answered without ending the session, and
 XON ENQ at 19200 bit/s from a unit put in place by a sample-rate change. Frontend tests cover the bars on every
 Navigation Key Setup layout (never the device's own table), the menu items offered only where they can work, the
 factory reset deleting the memory and its update between the old unit closing and the new one starting, and a saved
-serial port plugged in at every start. `tools/btspeak_deb_test.sh` checks the User Menu from the .deb and
-`install.sh`: a line per unit the firmware can start, lines for units without firmware removed, renamed lines kept.
+serial port plugged in at every start. Firmware tests cover the catalog's units before More languages, Escape there
+returning to the list on it, and Ctrl+C copying a unit (never More languages) to the User Menu, with the platform's
+own chooser where its User Menu library is missing. `tools/btspeak_deb_test.sh` checks the User Menu from the .deb
+and `install.sh`: one Blazie Emulator line, never doubled (renamed or not), the older packages' lines a unit gone,
+renamed and copied ones kept until removal; and the Blazie menu itself: the catalog's units, More languages with the
+releases, none without them, an item saying so when nothing is listed, and the .deb's launcher listing the Braille
+Lite before any firmware is fetched.
 
 Legacy keyboard tests cover backend selection, complete-chord handoff, exclusive capture, slow and disconnected
 consumers, bounded release, concurrent-launch ownership, supervised recovery, and older dialog signatures.
@@ -465,7 +475,9 @@ with `BLAZIE_TEST_ON_BT_DEVICE=1`, so the test machine's own detection is expect
 | `disk_image.py` | Copy files to a folder, Export files to disk image and Import files from disk image, through `blazie_files` (the import through the same staged copy). |
 | `serial_port.py` | The Serial port menu, the worker's `SERIAL`, the pseudo-terminal's link. |
 | `panning.py` | The keys that pan the display in Braille Settings, as the advance bars. |
-| `user-menu-units` | The User Menu made to list the units the installed firmware can start (`install.sh`, the .deb). |
+| `firmware_menu.py` | The host menu's Firmware choice: the catalog's units, More languages, and Ctrl+C to the User Menu. |
+| `blazie.menu` | The Blazie menu, a BT Speak menu made each time it opens: the units `blazie_emu --list-units` lists, the releases under More languages (the same program as `blazie-languages.menu`). |
+| `user-menu-entry` | The User Menu's line opening the Blazie menu, under the menu's own lock (`install.sh`, the .deb). |
 | `preferences.py` | `preferences.json` beside the saved memory: the unit, quick key response, the audio settings, the serial port. |
 | `audio_options.py`, `audio_menu.py` | The audio settings and their host menu. |
 | `runtime_paths.py` | The worker and firmware beside the launcher: the source tree, `build/linux`, or the package's `bin/`. |

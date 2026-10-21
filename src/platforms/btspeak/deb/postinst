@@ -1,11 +1,11 @@
 #!/bin/sh
-# blazie-emu-btspeak postinst: the firmware fetched (never fatal: without a network the menu entry fetches it on
-# first start), and every BT Speak user's User Menu made to list the units that firmware can start (user-menu-units).
+# blazie-emu-btspeak postinst: the firmware fetched (never fatal: without a network the Braille Lite's item fetches it
+# on first start), and every BT Speak user's User Menu given the line that opens the Blazie menu, which lists the
+# units each time it opens (user-menu-entry; the three lines a unit each that packages before it wrote go).
 # BTE_ROOT and BTE_HOMES: the tests' own.
 set -e
 ROOT="${BTE_ROOT:-}"
 LIB="$ROOT/usr/lib/blazie-emu-btspeak"
-MENU_RUN="run /usr/bin/blazie-emu-btspeak --unit"
 
 case "$1" in
     configure)
@@ -17,21 +17,13 @@ case "$1" in
                 echo "blazie-emu-btspeak: the firmware could not be fetched now; it will be on first start"
             fi
         fi
-        # the units the fetched firmware can start; without it (no network now), the Braille Lite alone: its entry
-        # fetches the firmware on first start and then lists the rest in that user's menu (blazie-emu-btspeak)
-        # (--keep: so offline, nothing is removed -- the units a user's own fetched firmware added stay)
-        units=""
-        keep=""
-        if [ -f "$LIB/share/ssi263-speech/BL2ENG.BNS" ]; then
-            units="$("$LIB/bin/blazie_emu" --list-units --firmware "$LIB/share/ssi263-speech")" || units=""
-        fi
-        [ -n "$units" ] || { units="$(printf 'bl-en\tBraille Lite 2000 (English)')"; keep=--keep; }
         for dir in ${BTE_HOMES:-/home/*}/BTSpeak; do
             [ -d "$dir" ] || continue
             um="$dir/user.menu"
             new=0
             [ -f "$um" ] || new=1
-            printf '%s\n' "$units" | "$LIB/user-menu-units" $keep "$um" "$MENU_RUN" 2>/dev/null || true
+            "$LIB/user-menu-entry" "$um" /usr/lib/blazie-emu-btspeak/blazie.menu \
+                "run /usr/bin/blazie-emu-btspeak --unit" 2>/dev/null || true
             [ "$new" = 0 ] || chown --reference="$dir" "$um" 2>/dev/null || true
         done
         ;;

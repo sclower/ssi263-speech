@@ -1,24 +1,27 @@
 #!/bin/sh
-# blazie-emu-btspeak -- what the User Menu's entries run: the Blazie emulator with its firmware.  The package's
-# installation fetched the firmware into /usr/lib/blazie-emu-btspeak/share/ssi263-speech; when it could not (no
-# network then), it is fetched now into the user's own folder, once, and used from there -- and the units it has are
-# added to the user's User Menu, which until then listed the Braille Lite alone.
+# blazie-emu-btspeak -- what the Blazie menu's items run, and what lists them: the Blazie emulator with its firmware.
+# The package's installation fetched the firmware into /usr/lib/blazie-emu-btspeak/share/ssi263-speech; when it could
+# not (no network then), it is fetched now into the user's own folder, once, and used from there.  Until then the
+# Blazie menu lists the Braille Lite alone, whose item fetches it.
 LIB=/usr/lib/blazie-emu-btspeak
 EMU="$LIB/bin/blazie_emu"
+# what a unit copied to the User Menu from the emulator's own Firmware choice runs (firmware_menu.py): this
+BLAZIE_EMU_LAUNCHER=/usr/bin/blazie-emu-btspeak
+export BLAZIE_EMU_LAUNCHER
 if [ -f "$LIB/share/ssi263-speech/BL2ENG.BNS" ]; then
     exec "$EMU" "$@"
 fi
 MINE="${XDG_DATA_HOME:-$HOME/.local/share}/blazie-emu-btspeak/firmware"
 if [ ! -f "$MINE/BL2ENG.BNS" ]; then
+    if [ "$1" = --list-units ]; then
+        printf 'bl-en\tBraille Lite 2000 (English)\tcatalog\n'
+        exit 0
+    fi
     echo "The Blazie firmware is not here yet: fetching it from the project's release."
     "$LIB/fetch-firmware" "$MINE" || {
         echo "The firmware could not be fetched (is the network on?).  Try again later."
         sleep 5
         exit 1
     }
-    if [ -d "$HOME/BTSpeak" ]; then
-        "$EMU" --list-units --firmware "$MINE" \
-            | "$LIB/user-menu-units" "$HOME/BTSpeak/user.menu" "run /usr/bin/blazie-emu-btspeak --unit" 2>/dev/null || true
-    fi
 fi
 exec "$EMU" --firmware "$MINE" "$@"

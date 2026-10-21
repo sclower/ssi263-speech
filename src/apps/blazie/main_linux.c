@@ -1635,14 +1635,15 @@ static void on_signal(int sig)
 }
 
 /* --list-units: each unit whose firmware is in the folder and that can start -- its factory state there, or none
-   needed (a Type 'n Speak's cold start, a release's state made on its first start) -- as "id<TAB>name"; what the BT
-   Speak's installers put in its User Menu */
+   needed (a Type 'n Speak's cold start, a release's state made on its first start) -- as "id<TAB>name<TAB>catalog", or
+   "release" for a release unit (bl_languages.txt's: the desktop apps' Firmware > More languages); what the BT Speak's
+   Blazie menu lists */
 static int print_units(void)
 {
     int i, n = emc_list(g_fw_dir, g_units, EMC_MAX);
     for (i = 0; i < n; i++)
         if (g_units[i].present && (!g_units[i].factory[0] || exists(g_units[i].factory)))
-            printf("%s\t%s\n", g_units[i].key, g_units[i].name);
+            printf("%s\t%s\t%s\n", g_units[i].key, g_units[i].name, g_units[i].release >= 0 ? "release" : "catalog");
     return 0;
 }
 
@@ -1655,7 +1656,8 @@ static void usage(void)
            "  blazie_emu --no-sound           no sound card: the unit runs on silent, paced by the system clock\n"
            "  blazie_emu --no-bt              on a BT Speak or BT Braille, run here in the terminal all the same\n"
            "  blazie_emu --bt-probe           is this a BT Speak or BT Braille? (yes: exit 0)\n"
-           "  blazie_emu --list-units         the units the firmware folder can start, a line each: id, a tab, name\n"
+           "  blazie_emu --list-units         the units the firmware folder can start, a line each: id, name, and\n"
+           "                                  catalog or release (More languages), tab-separated\n"
            "  blazie_emu --help\n\n"
            "On a BT Speak or BT Braille, blazie_emu hands over to blazie_emu_bt (the device's keyboard, speech and\n"
            "braille display), with --unit, --firmware, --config (as --state-dir) and --rate.\n\n"
@@ -1722,17 +1724,6 @@ int main(int argc, char **argv)
         }
 #undef TAKE
     }
-    if (list_units) {                           /* no settings read or made, no unit started: the folder alone */
-        g_ini = ini_load(NULL);
-        if (!g_ini)
-            return 1;
-        find_firmware(fw_given);
-        return print_units();
-    }
-    g_headless = wav || null_out;
-    if (getenv("BLAZIE_KEYS_BREAK"))
-        blk_break = 1;                          /* the tests' control: dots 1 and 4 swapped */
-
     /* the settings and the units' memory: ~/.config/ssi263-speech/blazie-emu */
     if (cfg_given)
         snprintf(g_cfg_dir, sizeof g_cfg_dir, "%s", cfg_given);
@@ -1742,6 +1733,17 @@ int main(int argc, char **argv)
         snprintf(g_cfg_dir, sizeof g_cfg_dir, "%s/.config/ssi263-speech/blazie-emu",
                  getenv("HOME") ? getenv("HOME") : ".");
     snprintf(g_ini_path, sizeof g_ini_path, "%s/blazie_emu.ini", g_cfg_dir);
+    if (list_units) {                           /* no settings made, no unit started: the folder a unit would start
+                                                   from (the settings' firmware_dir, read only, else beside) */
+        g_ini = ini_load(exists(g_ini_path) ? g_ini_path : NULL);
+        if (!g_ini)
+            return 1;
+        find_firmware(fw_given);
+        return print_units();
+    }
+    g_headless = wav || null_out;
+    if (getenv("BLAZIE_KEYS_BREAK"))
+        blk_break = 1;                          /* the tests' control: dots 1 and 4 swapped */
     if (!g_headless || autosave)
         make_dirs(g_cfg_dir);
     if (!g_headless && !exists(g_ini_path)) {   /* the first run: the settings file, explained */

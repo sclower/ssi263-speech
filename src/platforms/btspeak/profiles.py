@@ -18,6 +18,7 @@ class Profile:
     saved: str
     kind: str = "bl"
     codepage: int = 850
+    release: bool = False               # a language release (bl_languages.txt's): the Firmware choice's More languages
 
     def paths(self, firmware_dir: Path, state_dir: Path) -> tuple[Path, Path | None, Path]:
         return self.firmware, self.factory, state_dir / self.saved
@@ -37,7 +38,7 @@ def discover(executable: Path, firmware_dir: Path) -> dict[str, Profile]:
         for row in json.loads(result.stdout):
             profile = Profile(row["key"], _(row["label"]), Path(row["firmware"]),
                               Path(row["factory"]) if row["factory"] else None,
-                              row["saved"], row["kind"], row["codepage"])
+                              row["saved"], row["kind"], row["codepage"], bool(row.get("release", False)))
             if Path(profile.saved).name != profile.saved or profile.kind not in ("bl", "bns", "tns"):
                 raise ValueError("Invalid catalog entry")
             profiles[profile.key] = profile

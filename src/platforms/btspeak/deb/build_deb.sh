@@ -1,6 +1,6 @@
 #!/bin/sh
 # A .deb of the Blazie emulator for the BT Speak and BT Braille: installed with apt, it fetches the firmware from the
-# project's own release and adds the units to the User Menu; removing it takes both away again.  No firmware is
+# project's own release and adds the Blazie menu to the User Menu; removing it takes both away again.  No firmware is
 # inside the .deb (the project's releases are the only place it is published from): fetch-firmware takes it from the
 # pinned release, else from the latest one by its SHA256SUMS.txt.
 #
@@ -28,7 +28,12 @@ install -m 755 "$ROOT/build/linux/blazie_emu" "$ROOT/build/linux/blazie_files" "
 [ -x "$ROOT/build/linux/blazie_emu_bt" ] && [ -x "$ROOT/build/linux/blazie_bt" ] \
     || { echo "no build/linux/blazie_emu_bt and blazie_bt: build them first (./build_linux.sh)"; exit 1; }
 install -m 755 "$ROOT/build/linux/blazie_emu_bt" "$ROOT/build/linux/blazie_bt" "$LIB/bin/"
-install -m 755 "$HERE/fetch-firmware" "$ROOT/src/platforms/btspeak/user-menu-units" "$LIB/"
+install -m 755 "$HERE/fetch-firmware" "$ROOT/src/platforms/btspeak/user-menu-entry" "$LIB/"
+# the Blazie menu (the User Menu's line opens it), listing what the launcher lists; More languages is itself again
+sed 's|^PROGRAM = .*$|PROGRAM = "/usr/bin/blazie-emu-btspeak"|' "$ROOT/src/platforms/btspeak/blazie.menu" > "$LIB/blazie.menu"
+chmod 755 "$LIB/blazie.menu"
+grep -q -x 'PROGRAM = "/usr/bin/blazie-emu-btspeak"' "$LIB/blazie.menu" || { echo "blazie.menu: PROGRAM not written"; exit 1; }
+ln -s blazie.menu "$LIB/blazie-languages.menu"
 if [ -n "${BTE_PIN_URL:-}${BTE_PIN_SHA:-}" ]; then
     case "${BTE_PIN_URL:-}" in https://*) ;; *) echo "BTE_PIN_URL must be an https:// URL"; exit 1 ;; esac
     echo "${BTE_PIN_SHA:-}" | grep -q -x -E '[0-9a-f]{64}' || { echo "BTE_PIN_SHA must be a SHA-256 (64 hex digits)"; exit 1; }
@@ -60,7 +65,8 @@ Description: Blazie Braille Lite 2000, Braille 'n Speak 2000 and Type 'n Speak e
  The original Blazie firmware on an emulated SSI-263 voice, played with the BT Speak's own
  braille keys, with the device's own dialogs for its menu; on a BT Braille the Braille Lite's
  display appears on the BT Braille's display and its L2/R2 and L3/R3 keys are the advance bars.  Installing fetches the firmware from
- the ssi263-speech project's release and adds the units to the User Menu; removing takes
+ the ssi263-speech project's release and adds a Blazie menu of its units to the User Menu
+ (Ctrl+C there copies a unit to the User Menu of its own); removing takes
  both away.  M-chord with dot 7 opens the emulator's menu; Z-chord with dot 7 saves and
  quits.
 EOF

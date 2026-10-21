@@ -19,14 +19,14 @@ cp "$ROOT/build/linux/blazie_emu" "$ROOT/build/linux/blazie_files" "$STAGE/bin/"
 cp "$ROOT/build/linux/blazie_emu_bt" "$ROOT/build/linux/blazie_bt" "$STAGE/bin/"     # the BT front end (#4)
 cp "$ROOT/src/platforms/btspeak/install.sh" "$STAGE/install-btspeak.sh"
 cp "$ROOT/src/platforms/btspeak/uninstall.sh" "$STAGE/uninstall-btspeak.sh"
-cp "$ROOT/src/platforms/btspeak/user-menu-units" "$STAGE/user-menu-units"   # install-btspeak.sh's User Menu
+cp "$ROOT/src/platforms/btspeak/user-menu-entry" "$ROOT/src/platforms/btspeak/blazie.menu" "$STAGE/"   # install-btspeak.sh's menus
 cp "$ROOT/src/platforms/btspeak/README-btspeak.md" "$STAGE/README-btspeak.md"
 cp "$ROOT/src/apps/blazie/README-linux.md" "$STAGE/README-blazie-emu.md"
 cp "$ROOT/src/platforms/btspeak/README.md" "$STAGE/README-blazie-bt.md"
 cp "$ROOT/LICENSE" "$STAGE/LICENSE"
 cp "$ROOT/src/csrc/cpu/mame_z180/LICENSE-BSD-3-Clause.txt" "$STAGE/licenses/MAME-Z180-core-BSD-3-Clause.txt"
 cp "$ROOT/third_party/casso/LICENSE" "$STAGE/licenses/Casso-MIT.txt"
-chmod +x "$STAGE/install-btspeak.sh" "$STAGE/uninstall-btspeak.sh" "$STAGE/user-menu-units" "$STAGE/bin/"*
+chmod +x "$STAGE/install-btspeak.sh" "$STAGE/uninstall-btspeak.sh" "$STAGE/user-menu-entry" "$STAGE/blazie.menu" "$STAGE/bin/"*
 if find "$STAGE" -iname '*.BNS' -o -iname '*.TNS' -o -name '*.state' | grep -q .; then
     echo "firmware found in the package: not made"; exit 1
 fi

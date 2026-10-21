@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MODULES = (
     "frontend.py", "worker.py", "keymap.py", "display.py", "preferences.py", "profiles.py", "panning.py",
     "tns_keyboard.py", "audio_options.py", "audio_menu.py", "runtime_paths.py", "file_import.py",
-    "disk_image.py", "serial_port.py",
+    "disk_image.py", "serial_port.py", "firmware_menu.py",
     "entrypoint.py", "bt_runtime.py", "keyboard_backend.py", "legacy_keyboard.py", "legacy_bridge.py", "legacy_protocol.py",
 )
 

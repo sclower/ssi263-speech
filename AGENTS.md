@@ -87,7 +87,7 @@ licence and a reason.
 - **A human is in the loop for the final test.** A maintainer runs the full suites and listens to the change before
   it is merged. Write the description so they can: what changed, how to hear it, and where it could go wrong.
 - Keep a pull request to one subject. Rebase on main; do not reformat code you did not change.
-- **No machine paths** (`C:\Users\...`, `/home/...`) in code, docs or commit messages. Use paths relative to the
+- **No machine paths** (anything naming a person's own folders or drives) in code, docs or commit messages. Use paths relative to the
   repository, or the existing `paths.local` mechanism.
 - **No one's personal handle in commits.** Credit people by first name, and only once they have agreed to it.
 - Write code that reads like the code around it: its naming, its comment density, its idiom. Comments say why,

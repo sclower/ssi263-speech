@@ -6,7 +6,8 @@ program (test_sb_host.c) is built here with w64devkit, the chip's flags as build
     python tools/check_sb_host.py            exit 1 on any failure
 
 Control (SB_HOST_BREAK=1): the Python reference's chip runs 1 % fast (xck 1.01 MHz) -- every frame then comes at
-another time, and the writes must differ.  (The instruction coupling alone does not show: the drivers send a frame
+another time, and the writes must differ.  Control (SSI263_SB_PACE_BREAK=1, both hosts): the long text printed at once, as
+before this fix -- both hosts must fault.  (The instruction coupling alone does not show: the drivers send a frame
 when the chip asks, so their writes follow the chip, not the CPU's speed.)
 """
 import os
@@ -19,7 +20,10 @@ sys.path.insert(0, os.path.join(ROOT, "src"))
 CSRC = os.path.join(ROOT, "src", "csrc")
 SB_DIR = os.path.join(ROOT, "firmware", "gw-micro-sounding-board")
 OUT = os.path.join(ROOT, "build", "sb_host", str(os.getpid()))   # its own: the suite runs the check and its control at once
-TEXTS = ["Hello, this is the Sounding Board.", "The quick brown fox jumps over the lazy dog, 1234 times."]
+# the last, about 70 s of speech: SB.COM's frame ring holds 40 s, so its text is printed as the ring empties (say()) --
+# printed at once, the call waited past 30 s and the host faulted, the whole text lost (a listener's report, 0.8.5)
+TEXTS = ["Hello, this is the Sounding Board.", "The quick brown fox jumps over the lazy dog, 1234 times.",
+         "The quick brown fox jumps over the lazy dog. " * 24]
 BREAK = os.environ.get("SB_HOST_BREAK") == "1"
 sys.path.insert(0, ROOT)
 from tools import repo_paths  # noqa: E402
@@ -60,15 +64,18 @@ def reference():
     n0 = len(sb.writes)                  # the C test logs from after loading (log_writes is set then)
     sb.boot()
     lines = []
-    for text in TEXTS:
-        sb.say(text + "\r")
-        sb.run(0.05)
-        k = 0
-        while k < 400 and sb.busy():
+    try:
+        for text in TEXTS:
+            sb.say(text + "\r")
             sb.run(0.05)
-            k += 1
-        lines.append(len(sb.writes) - n0)
-    return sb.writes[n0:], lines
+            k = 0
+            while k < 2400 and sb.busy():
+                sb.run(0.05)
+                k += 1
+            lines.append(len(sb.writes) - n0)
+    except RuntimeError as e:                    # the host stopped: what it wrote, and why
+        return sb.writes[n0:], lines, str(e)
+    return sb.writes[n0:], lines, None
 
 
 def main():
@@ -91,8 +98,10 @@ def main():
             c_ends.append(int(p[1]))
         elif p[0] == "FAULT":
             fault = ln
-    py_writes, py_ends = reference()
+    py_writes, py_ends, py_fault = reference()
     failures = 0
+    print("%-5s the Python reference ran: %s" % ("ok" if py_fault is None else "FAIL", py_fault or "%d writes" % len(py_writes)))
+    failures += py_fault is not None
     ok = fault is None and r.returncode == 0
     print("%-5s the C host ran: %s" % ("ok" if ok else "FAIL", fault or "exit %d, %d writes" % (r.returncode,
                                                                                             len(c_writes))))

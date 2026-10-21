@@ -8,6 +8,15 @@ samples.  Here: each sentence sounds (rms) and lasts within 5 % of the Speak-Out
 
 Control (SB_VOICE_BREAK=1): the Sounding Board's folder is taken as missing SB.COM -- the voice must then be
 unavailable and not made, and the sound checks fail.
+
+A long text (a listener's report: "a large block of text, we are losing speech"): about 70 s of speech speaks to its
+end, twice the length of its first half -- SB.COM's frame ring holds 40 s, and the text printed at once held the
+printer call past the host's 30 s wait, a fault that lost all of it.  And after a fault the voice speaks again: the
+fault was not passed on, so the box was never rebooted and every later utterance was silent.  Controls:
+SSI263_SB_PACE_BREAK=1 (the whole text in one printer call, as it was): the long text must fail, the next one still
+speak; with SO_VOICE_FAULT_BREAK=1 too (the fault unsaid, as it was), the voice must stay silent after it.  The
+Speak-Out voice's long text too: its firmware's 1 KB text ring never held the sender back, so the text past it wrapped
+over what was not yet read.  Control: SSI263_SO_PACE_BREAK=1 (all of it sent at once, as it was) must fail it.
 """
 import ctypes
 import os
@@ -19,6 +28,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 FW = os.path.join(ROOT, "firmware")
 TEXTS = ["Hello, this is the Sounding Board.", "The quick brown fox jumps over the lazy dog, 1234 times."]
+HALF = "The quick brown fox jumps over the lazy dog. " * 12
+LONG = HALF * 2
 BREAK = os.environ.get("SB_VOICE_BREAK") == "1"
 
 
@@ -85,6 +96,17 @@ def main():
             near = bool(a) and bool(b) and abs(len(a) - len(b)) <= 0.05 * len(b)
             ok(rms > 500 and near, "speaks: %s" % text[:28], "%d samples, rms %.0f (the Speak-Out voice: %d samples)" % (
                 len(a), rms, len(b)))
+        if v:
+            half, whole = speak(lib, v, HALF), speak(lib, v, LONG)
+            ok(abs(len(whole) - 2 * len(half)) <= 0.05 * 2 * len(half), "a long text speaks to its end",
+               "%.1f s; its first half %.1f s" % (len(whole) / 22050.0, len(half) / 22050.0))
+            a = speak(lib, v, TEXTS[0])
+            rms = (sum(x * x for x in a) / len(a)) ** 0.5 if a else 0.0
+            ok(rms > 500, "after it, the voice speaks again", "%d samples, rms %.0f" % (len(a), rms))
+        if w:                                   # the Speak-Out's own: its 1 KB text ring wrapped, the end lost
+            half, whole = speak(lib, w, HALF), speak(lib, w, LONG)
+            ok(abs(len(whole) - 2 * len(half)) <= 0.05 * 2 * len(half), "the Speak-Out: a long text to its end",
+               "%.1f s; its first half %.1f s" % (len(whole) / 22050.0, len(half) / 22050.0))
         for x in (v, w):
             if x:
                 lib.ssv_destroy(x)

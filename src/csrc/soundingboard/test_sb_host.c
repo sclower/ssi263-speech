@@ -58,7 +58,7 @@ int main(int argc, char **argv)
         line[len++] = '\r';                             /* say(text + "\r"), one call */
         sbh_say(h, line, len);
         sbh_run(h, 0.05, 0.0005, &y);
-        for (k = 0; k < 400 && sbh_busy(h, 0.05, 1.5) && !sbh_fault(h); k++)
+        for (k = 0; k < 2400 && sbh_busy(h, 0.05, 1.5) && !sbh_fault(h); k++)
             sbh_run(h, 0.05, 0.0005, &y);
         n = sbh_writes(h, &wl);
         for (; printed < n; printed++)

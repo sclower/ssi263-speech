@@ -244,6 +244,11 @@ int so_input_queued(const so_board *b)
     return so_scu_pending(&b->scu);
 }
 
+int so_input_count(const so_board *b)
+{
+    return so_scu_count(&b->scu);
+}
+
 int so_writes(const so_board *b, const so_write **w)
 {
     *w = b->w;

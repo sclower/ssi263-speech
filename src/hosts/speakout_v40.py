@@ -63,6 +63,8 @@ def _load():
         lib.so_drop_input.argtypes = [_P]
         lib.so_input_queued.argtypes = [_P]
         lib.so_input_queued.restype = c_int
+        lib.so_input_count.argtypes = [_P]
+        lib.so_input_count.restype = c_int
         lib.so_writes.argtypes = [_P, ctypes.POINTER(ctypes.POINTER(_Write))]
         lib.so_writes.restype = c_int
         lib.so_clear_writes.argtypes = [_P]
@@ -124,6 +126,9 @@ class Board:
 
     def input_queued(self):
         return bool(self._lib.so_input_queued(self._h))
+
+    def input_count(self):
+        return self._lib.so_input_count(self._h)
 
     def take_writes(self):
         """The chip writes since the last call, in order: [(reg, value)]."""

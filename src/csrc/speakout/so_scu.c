@@ -52,6 +52,11 @@ int so_scu_pending(const so_scu *s)
     return s->loaded >= 0 || s->tail > s->head;
 }
 
+int so_scu_count(const so_scu *s)
+{
+    return (s->tail - s->head) + (s->loaded >= 0);
+}
+
 static int pop(so_scu *s)
 {
     return s->tail > s->head ? s->q[s->head++] : -1;

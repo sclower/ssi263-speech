@@ -1452,6 +1452,28 @@ if os.path.isfile(os.path.join(SO_LIB, "test_v40_contract.exe")):
             CHECKS.append(check("Sounding Board voice CONTROL (SB.COM missing, must fail)", [PY, SB_VOICE],
                                 env={"SB_VOICE_BREAK": "1"}, expect_fail=True,
                                 fail_marks=[r"^FAIL  available with SBLOAD\.COM and SB\.COM ", r"^sb voice: 4 FAILED$"]))
+            # a long text (a listener's report: speech lost, then none at all): SB.COM's frame ring fills, so the
+            # host prints the text as it empties (sb_host.c feed) and a fault reboots the box (so_voice.c).  Controls:
+            # the whole text in one printer call, as it was (the long text lost: both hosts fault; the voice speaks
+            # again after it); and with the fault unsaid too, as it was (the voice silent from then on)
+            CHECKS.append(check("Sounding Board host CONTROL (a long text in one printer call, must fail)",
+                                [PY, SB_HOST], env={"SSI263_SB_PACE_BREAK": "1"}, expect_fail=True,
+                                fail_marks=[r"^FAIL  the Python reference ran: call 0058:0000 still waiting",
+                                            r"^FAIL  the C host ran: FAULT call 0058:0000 still waiting",
+                                            r"^sb host: \d FAILED$"]))
+            CHECKS.append(check("Sounding Board voice CONTROL (a long text in one printer call, must fail)",
+                                [PY, SB_VOICE], env={"SSI263_SB_PACE_BREAK": "1"}, expect_fail=True,
+                                fail_marks=[r"^FAIL  a long text speaks to its end +0\.0 s",
+                                            r"^ok    after it, the voice speaks again ", r"^sb voice: 1 FAILED$"]))
+            CHECKS.append(check("Sounding Board voice CONTROL (and the fault unsaid: silent after it, must fail)",
+                                [PY, SB_VOICE], env={"SSI263_SB_PACE_BREAK": "1", "SO_VOICE_FAULT_BREAK": "1"},
+                                expect_fail=True,
+                                fail_marks=[r"^FAIL  after it, the voice speaks again +0 samples",
+                                            r"^sb voice: 2 FAILED$"]))
+            CHECKS.append(check("Speak-Out voice CONTROL (a long text sent at once, its ring wrapping, must fail)",
+                                [PY, SB_VOICE], env={"SSI263_SO_PACE_BREAK": "1"}, expect_fail=True,
+                                fail_marks=[r"^FAIL  the Speak-Out: a long text to its end ",
+                                            r"^ok    a long text speaks to its end ", r"^sb voice: 1 FAILED$"]))
         CHECKS.append(check("Speak-Out: MAME V40 core CONTROL (a value flipped, must fail)",
                             [PY, "speakout_core_compare.py"], env={"SPEAKOUT_COMPARE_FLIP": "1"}, expect_fail=True,
                             fail_marks=[r"^mame-steps: write values DIFFER from Unicorn's at write \d+ of",

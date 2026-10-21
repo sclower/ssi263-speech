@@ -20,6 +20,7 @@ void so_scu_free(so_scu *s);
 int so_scu_queue(so_scu *s, const uint8_t *bytes, int n);    /* 0 if out of memory */
 void so_scu_drop(so_scu *s);                                 /* the queue and the loaded byte */
 int so_scu_pending(const so_scu *s);                         /* a byte queued or loaded */
+int so_scu_count(const so_scu *s);                           /* the bytes queued and loaded */
 int so_scu_load(so_scu *s);                                  /* load the next if none is; 1 if one is loaded */
 uint8_t so_scu_in(so_scu *s, uint16_t port);                 /* ports 0 and 1 */
 

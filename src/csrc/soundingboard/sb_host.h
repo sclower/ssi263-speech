@@ -48,19 +48,23 @@ SB_API sb_host *sbh_create(const unsigned char *sbload, size_t sbload_len, const
 SB_API void sbh_destroy(sb_host *h);
 SB_API ssi263 *sbh_chip(sb_host *h);
 
-/* say(): bytes to LPT3 (INT 17h, AH=0 per character).  Text with a letter or digit (bytes under 32 left out) that does
-   not start with ^E is speech: until its first phoneme the card counts as busy (patience). */
+/* say(): bytes to LPT3 (INT 17h, AH=0 per character), as fast as the driver takes them: queued, and printed a piece
+   at a time while SB.COM's frame ring is under half full (here and at each run and skip), so no printer call waits
+   on a full ring however long the text.  Text with a letter or digit (bytes under 32 left out) that does not start
+   with ^E is speech: until its first phoneme the card counts as busy (patience). */
 SB_API void sbh_say(sb_host *h, const unsigned char *bytes, int n);
 /* run(): `seconds` of chip time in `step` slices: the chip's audio at out_rate, in an internal buffer valid until the
    next call (what a blocked say made first).  Returns the sample count (-1: a fault). */
 SB_API int sbh_run(sb_host *h, double seconds, double step, const double **audio);
 /* skip(): the drivers run with the chip keeping time but making no sound; returns the time run */
 SB_API double sbh_skip(sb_host *h, double seconds, double step);
-/* input_pending(): frames the rules have made and the IRQ handler has not yet sent (SB.COM's ring) */
+/* input_pending(): text not yet printed, or frames the rules have made and the IRQ handler has not yet sent (SB.COM's
+   ring) */
 SB_API int sbh_input_pending(const sb_host *h);
 SB_API int sbh_busy(const sb_host *h, double quiet, double patience);
 SB_API void sbh_boot(sb_host *h, double seconds);
-/* cancel(limit): Ctrl-X, the driver's momentary silence; what was queued played out silently (up to `limit` s) */
+/* cancel(limit): the text not yet printed dropped, then Ctrl-X, the driver's momentary silence; what was queued played
+   out silently (up to `limit` s) */
 SB_API void sbh_cancel(sb_host *h, double limit);
 /* nonzero once the drivers have faulted (an unimplemented service, a halt, an 80186-only opcode) */
 SB_API int sbh_fault(const sb_host *h);

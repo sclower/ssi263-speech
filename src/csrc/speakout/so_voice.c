@@ -506,7 +506,12 @@ SO_API int sov_render(so_voice *v, const short **pcm, int *done)
     *done = 0;
     if (!v->active) { *done = 1; return 0; }
     n = box_run(box_of(v), BLOCK_S, STEP_S, &y);
-    if (n < 0) { finish(v); *done = 1; return 0; }
+    if (n < 0) {                    /* the host has faulted (the Sounding Board's does so): rebooted at the next begin */
+        finish(v);
+        v->fault = !getenv("SO_VOICE_FAULT_BREAK");     /* the tests' control: the fault unsaid, as it was */
+        *done = 1;
+        return 0;
+    }
     if (v->lead) {                                             /* _trim_lead: the box's reading time is only delay */
         int k;
         start = n;

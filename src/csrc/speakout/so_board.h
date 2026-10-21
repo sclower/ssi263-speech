@@ -51,6 +51,7 @@ uint64_t so_run_steps_unicorn(so_board *b, uint64_t n);
 void so_send(so_board *b, const uint8_t *bytes, int n);   /* bytes for the serial input */
 void so_drop_input(so_board *b);       /* the queued and the loaded byte */
 int so_input_queued(const so_board *b);
+int so_input_count(const so_board *b);  /* the bytes queued and loaded, not yet read by the firmware */
 
 int so_writes(const so_board *b, const so_write **w);     /* the chip writes since so_clear_writes, in order */
 void so_clear_writes(so_board *b);

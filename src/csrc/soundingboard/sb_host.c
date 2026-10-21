@@ -34,6 +34,9 @@
 #define TIMER_HZ (1193182.0 / 65536)
 #define RING_WRITE 0x14C           /* SB.COM 2.7's frame ring: where the rules write ... */
 #define RING_READ 0x14E            /* ... and where the IRQ handler reads */
+#define RING_SIZE 0xFF5            /* the ring's bytes: 817 frames, about 40 s of speech; each pointer drops by it as it wraps */
+#define FEED_BELOW 0x800           /* text is printed to the driver while the ring holds less than this (about 20 s) */
+#define PIECE 32                   /* bytes printed at a time: a few words' frames, far from filling the ring */
 #define RET_LINEAR ((unsigned long)BIOS_SEG * 16 + RETURN_OFF)
 #define NO_COUNT ((uint64_t)1 << 62)
 
@@ -62,6 +65,10 @@ struct sb_host {
     int log_on;
     sbh_write *wl;
     int n_wl, cap_wl;
+    /* text said and not yet printed to the driver (feed) */
+    unsigned char *queue;
+    int q_len, q_pos, q_cap;
+    int pace_break;                                       /* SSI263_SB_PACE_BREAK=1, the tests' control: all in one call */
 };
 
 /* ---- faults: what soundingboard.py raises ------------------------------------------------------------------------- */
@@ -532,17 +539,12 @@ static int settle(sb_host *h, uint64_t budget)
     return 0;
 }
 
-static void say_(sb_host *h, const unsigned char *bytes, int n, int speech)
+/* _print: bytes to LPT3 now, the client's call running until the driver has taken them all */
+static void print_(sb_host *h, const unsigned char *bytes, int n)
 {
     int k;
-    if (h->fault || n <= 0)
-        return;
     if (settle(h, 400000) < 0)
         return;
-    if (speech) {
-        h->preparing = 1;
-        h->say_time = ssi263_time(h->chip);
-    }
     for (k = 0; k < n; k += 0x4000) {
         int len = n - k < 0x4000 ? n - k : 0x4000;
         if (!wrmem(h, (unsigned long)TEXT_SEG * 16, bytes + k, (size_t)len))
@@ -553,6 +555,58 @@ static void say_(sb_host *h, const unsigned char *bytes, int n, int speech)
         if (far_call(h, CLIENT_SEG, 0, 2000000, 30.0, 0.0005) < 0)
             return;
     }
+}
+
+/* _ring_fill: the frame ring's bytes not yet sent; each pointer drops by RING_SIZE as it wraps (measured) */
+static int ring_fill(const sb_host *h)
+{
+    unsigned long base = (unsigned long)h->sb_seg * 16;
+    int d = (rd16(h, base + RING_WRITE) - rd16(h, base + RING_READ)) % RING_SIZE;
+    return d < 0 ? d + RING_SIZE : d;
+}
+
+/* _feed: the waiting text, a piece at a time, while the ring is under FEED_BELOW: the ring then always has 20 s of
+   speech ahead of the chip, and never fills, so a piece's printer call never waits */
+static void feed(sb_host *h)
+{
+    while (!h->fault && h->q_pos < h->q_len && (h->pace_break || ring_fill(h) < FEED_BELOW)) {
+        int len = h->q_len - h->q_pos < PIECE || h->pace_break ? h->q_len - h->q_pos : PIECE;   /* control: all */
+        h->q_pos += len;
+        print_(h, h->queue + h->q_pos - len, len);
+    }
+    if (h->q_pos == h->q_len)
+        h->q_pos = h->q_len = 0;
+}
+
+/* say: SB.COM turns each word into frames as it arrives and makes the printer call wait while its frame ring is full
+   (its status never says busy), so a long text held the call for as long as it took to speak all but the ring's last
+   20 s: past the 30 s wait, the host faulted and the whole utterance was lost.  The text waits here instead (feed). */
+static void say_(sb_host *h, const unsigned char *bytes, int n, int speech)
+{
+    if (h->fault || n <= 0)
+        return;
+    if (settle(h, 400000) < 0)
+        return;
+    if (speech) {
+        h->preparing = 1;
+        h->say_time = ssi263_time(h->chip);
+    }
+    if (h->q_len + n > h->q_cap) {
+        int cap = h->q_cap ? h->q_cap : 4096;
+        unsigned char *q;
+        while (cap < h->q_len + n)
+            cap *= 2;
+        q = (unsigned char *)realloc(h->queue, (size_t)cap);
+        if (!q) {
+            raise_(h, "out of memory");
+            return;
+        }
+        h->queue = q;
+        h->q_cap = cap;
+    }
+    memcpy(h->queue + h->q_len, bytes, (size_t)n);
+    h->q_len += n;
+    feed(h);
 }
 
 SB_API void sbh_say(sb_host *h, const unsigned char *bytes, int n)
@@ -568,6 +622,9 @@ SB_API int sbh_run(sb_host *h, double seconds, double step, const double **audio
     double t = 0.0, *swap;
     int cap;
     *audio = h->buf;
+    if (h->fault)
+        return -1;
+    feed(h);
     if (h->fault)
         return -1;
     /* out = self.pending: the run's audio follows what the blocked calls made */
@@ -597,6 +654,9 @@ SB_API double sbh_skip(sb_host *h, double seconds, double step)
     double t = 0.0;
     if (h->fault)
         return -1.0;
+    feed(h);
+    if (h->fault)
+        return -1.0;
     h->n_pend = 0;
     while (t < seconds - 1e-9) {
         double before, dt, s = seconds - t;
@@ -614,7 +674,7 @@ SB_API double sbh_skip(sb_host *h, double seconds, double step)
 SB_API int sbh_input_pending(const sb_host *h)
 {
     unsigned long base = (unsigned long)h->sb_seg * 16;
-    return rd16(h, base + RING_WRITE) != rd16(h, base + RING_READ);
+    return h->q_len > h->q_pos || rd16(h, base + RING_WRITE) != rd16(h, base + RING_READ);
 }
 
 SB_API int sbh_busy(const sb_host *h, double quiet, double patience)
@@ -646,7 +706,8 @@ SB_API void sbh_cancel(sb_host *h, double limit)
     if (h->fault)
         return;
     h->preparing = 0;
-    say_(h, CTRL_X, 1, 0);
+    h->q_pos = h->q_len = 0;                    /* the text not yet printed goes too; ^X itself at once */
+    print_(h, CTRL_X, 1);
     t = sbh_skip(h, 0.01, 0.002);
     while (t >= 0 && t < limit && sbh_busy(h, 0.05, 1.5)) {
         if ((s = sbh_skip(h, 0.01, 0.002)) < 0)
@@ -691,6 +752,7 @@ SB_API sb_host *sbh_create(const unsigned char *sbload, size_t sbload_len, const
         snprintf(err, (size_t)errlen, "out of memory");
         return NULL;
     }
+    h->pace_break = getenv("SSI263_SB_PACE_BREAK") && !strcmp(getenv("SSI263_SB_PACE_BREAK"), "1");
     h->p = pc86_create();
     if (!h->p) {
         free(h);
@@ -767,6 +829,7 @@ SB_API void sbh_destroy(sb_host *h)
     free(h->pend);
     free(h->buf);
     free(h->wl);
+    free(h->queue);
     free(h);
 }
 

@@ -40,6 +40,13 @@ except ImportError:                       # the research tree: src/ on sys.path
 
 CHIP_BASE = 0xF0000 + 0xFE00
 IRQ_SERIAL, IRQ_CHIP = 1, 4
+# The firmware's text ring: every byte received goes to [1A30h], 8000h-83FFh, and the rules read at [1A32h].  It
+# never holds the sender back (a real Speak-Out's serial line did), so a text past 1 KB wrapped over text not yet
+# read -- the end of a long text lost.  The host keeps the excess and feeds it as the ring empties (_feed).
+TEXT_WRITE, TEXT_READ, TEXT_RING = 0x1A30, 0x1A32, 0x400
+FEED_BELOW = 0x300           # the ring and the serial queue together under this: text that fits goes at once, as always
+PIECE = 32                   # otherwise this much at a time, once the serial queue is empty
+PACE_BREAK = os.environ.get("SSI263_SO_PACE_BREAK") == "1"   # the tests' control: all text at once, as it was
 V40_HZ = 8_000_000          # "mame" (experimental): the uPD70208-8's speed grade, NOT a measured clock (the unit's
                             # oscillator is not read, and the V40 may divide it)
 
@@ -95,6 +102,7 @@ class SpeakOut:
         self.icw_step = 0
         self.rx = []               # queued serial bytes
         self.rx_byte = None
+        self.waiting = b""         # text said and not yet sent (_feed)
         self.port_log = {}
         self.chip_writes = []      # (chip time, reg, value)
         self.keep_writes = True    # an NVDA driver turns this off: the list would grow forever
@@ -207,7 +215,23 @@ class SpeakOut:
         if any(ch.isalnum() for ch in body.replace("\x05", "")) and not text.startswith("\x05"):
             self.preparing = True
             self.say_time = self.chip.time
-        self._queue(text.encode("latin-1", "replace"))
+        self.waiting += text.encode("latin-1", "replace")
+        self._feed()
+
+    def _feed(self):
+        """The waiting text to the serial line: all of it when it fits under FEED_BELOW with what the ring and the
+        line already hold (any ordinary text, sent exactly as it always was), else a PIECE at a time, each once the
+        line is empty and the ring has room for it."""
+        while self.waiting:
+            queued = self._input_count()
+            held = (self._word(TEXT_WRITE) - self._word(TEXT_READ)) % TEXT_RING + queued
+            if PACE_BREAK or held + len(self.waiting) < FEED_BELOW:
+                data, self.waiting = self.waiting, b""
+            elif not queued and held + PIECE < FEED_BELOW:
+                data, self.waiting = self.waiting[:PIECE], self.waiting[PIECE:]
+            else:
+                return
+            self._queue(data)
 
     # the serial input and the firmware's memory: overridden by SpeakOutV40, whose board holds them
     def _queue(self, data):
@@ -219,6 +243,9 @@ class SpeakOut:
 
     def _input_queued(self):
         return bool(self.rx) or self.rx_byte is not None
+
+    def _input_count(self):
+        return len(self.rx) + (self.rx_byte is not None)
 
     def _word(self, addr):
         return int.from_bytes(self.uc.mem_read(addr, 2), "little")
@@ -234,7 +261,7 @@ class SpeakOut:
 
     def input_pending(self):
         """Text not yet taken in, or taken in and not yet spoken by the rules."""
-        if self._input_queued():
+        if self.waiting or self._input_queued():
             return True
         if self._word(0x1A32) != self._word(0x1A30):
             return True
@@ -259,8 +286,9 @@ class SpeakOut:
         frames it had already queued play out SILENTLY (the chip keeps time, no sound),
         so none of the cut speech reaches the next utterance."""
         self._drop_input()
+        self.waiting = b""
         self.preparing = False
-        self.say("\x18")
+        self._queue(b"\x18")                # past any waiting text, as say("\x18") sent it before text waited
         self.skip(0.02)
         t = 0.02
         while t < limit and self.busy():
@@ -272,6 +300,7 @@ class SpeakOut:
 
     def skip(self, seconds, step=0.002):
         """Run the firmware with the chip keeping time but making no sound."""
+        self._feed()
         t = 0.0
         while t < seconds - 1e-9:
             self._offer()
@@ -283,6 +312,7 @@ class SpeakOut:
         return t
 
     def run(self, seconds, step=0.0005):
+        self._feed()
         out, t = [], 0.0
         while t < seconds:
             self._offer()
@@ -317,6 +347,7 @@ class SpeakOutV40(SpeakOut):
         self.clock_hz = float(clock_hz or os.environ.get("SSI263_SPEAKOUT_V40_HZ") or V40_HZ)
         self.board = Board(hex_path)
         self.uc = None
+        self.waiting = b""         # text said and not yet sent (_feed)
         self.port_log = {}
         self.chip_writes = []
         self.keep_writes = True
@@ -347,6 +378,9 @@ class SpeakOutV40(SpeakOut):
 
     def _input_queued(self):
         return self.board.input_queued()
+
+    def _input_count(self):
+        return self.board.input_count()
 
     def _word(self, addr):
         return int.from_bytes(self.board.read(addr, 2), "little")

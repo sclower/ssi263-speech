@@ -58,6 +58,12 @@ CARD_BASE = 0x300            # factory setting of the SPEECH BASE ADDRESS switch
 CARD_IRQ = 2                 # factory jumper (/!I2): vector 0Ah
 LPT = 2                      # LPT3, the driver's default port (/!L3), as INT 17h numbers it
 TIMER_HZ = 1193182.0 / 65536
+RING_WRITE = 0x14C           # SB.COM 2.7's frame ring: where the rules write ...
+RING_READ = 0x14E            # ... and where the IRQ handler reads
+RING_SIZE = 0xFF5            # the ring's bytes: 817 frames, about 40 s of speech; each pointer drops by it as it wraps
+FEED_BELOW = 0x800           # text is printed to the driver while the ring holds less than this (about 20 s)
+PIECE = 32                   # bytes printed at a time: a few words' frames, far from filling the ring
+PACE_BREAK = os.environ.get("SSI263_SB_PACE_BREAK") == "1"   # the tests' control: all text in one call
 REGS = {"ax": UC_X86_REG_AX, "bx": UC_X86_REG_BX, "cx": UC_X86_REG_CX, "dx": UC_X86_REG_DX,
         "si": UC_X86_REG_SI, "di": UC_X86_REG_DI, "bp": UC_X86_REG_BP, "cs": UC_X86_REG_CS,
         "ip": UC_X86_REG_IP, "ds": UC_X86_REG_DS, "es": UC_X86_REG_ES, "ss": UC_X86_REG_SS,
@@ -122,6 +128,7 @@ class SoundingBoard:
         self.preparing = False
         self.say_time = 0.0
         self.pending = []
+        self.queue = b""                 # text said and not yet printed to the driver (_feed)
         self.insns = 0
         self.stopped = None
         self.resident = None             # (paragraphs) once a program has gone resident
@@ -420,7 +427,11 @@ class SoundingBoard:
             n += 1000
 
     def say(self, text, speech=None):
-        """Print text to LPT3 (INT 17h, AH=0 per character), as a screen reader did."""
+        """Print text to LPT3 (INT 17h, AH=0 per character), as a screen reader did -- as fast as the driver takes
+        it.  SB.COM turns each word into frames as it arrives and makes the printer call wait while its frame ring
+        is full (its status never says busy), so a long text would hold the call for as long as it takes to speak
+        all but the ring's last 20 s: past wait_limit, the host stopped and the whole utterance was lost.  The text
+        waits here instead, and _feed hands it over in pieces while the ring is under half full."""
         data = text.encode("latin-1", "replace")
         if not data:
             return
@@ -430,6 +441,23 @@ class SoundingBoard:
         if speech:
             self.preparing = True
             self.say_time = self.chip.time
+        self.queue += data
+        self._feed()
+
+    def _ring_fill(self):
+        """The frame ring's bytes not yet sent: each pointer drops by RING_SIZE as it wraps (measured)."""
+        return (self._word(RING_WRITE) - self._word(RING_READ)) % RING_SIZE
+
+    def _feed(self):
+        """The waiting text, a piece at a time, while the ring is under FEED_BELOW: the ring then always has 20 s
+        of speech ahead of the chip, and never fills, so a piece's printer call never waits."""
+        while self.queue and (PACE_BREAK or self._ring_fill() < FEED_BELOW):
+            size = len(self.queue) if PACE_BREAK else PIECE         # the control: all of it in one call, as before
+            piece, self.queue = self.queue[:size], self.queue[size:]
+            self._print(piece)
+
+    def _print(self, data):
+        self._settle()
         for k in range(0, len(data), 0x4000):
             chunk = data[k:k + 0x4000]
             self.uc.mem_write(TEXT_SEG * 16, chunk)
@@ -439,6 +467,7 @@ class SoundingBoard:
             self._far_call(CLIENT_SEG, 0)
 
     def run(self, seconds, step=0.0005):
+        self._feed()
         out, t = self.pending, 0.0
         self.pending = []
         while t < seconds:
@@ -453,6 +482,7 @@ class SoundingBoard:
 
     def skip(self, seconds, step=0.002):
         """Run the drivers with the chip keeping time but making no sound."""
+        self._feed()
         self.pending = []
         t = 0.0
         while t < seconds - 1e-9:
@@ -469,8 +499,9 @@ class SoundingBoard:
 
     def input_pending(self):
         """Frames the rules have made and the IRQ handler has not yet sent: SB.COM's ring of
-        five-byte frames, [14Ch] where the rules write and [14Eh] where the handler reads."""
-        return self._word(0x14C) != self._word(0x14E)
+        five-byte frames, [14Ch] where the rules write and [14Eh] where the handler reads -- or text still waiting
+        to be printed to it."""
+        return bool(self.queue) or self._word(RING_WRITE) != self._word(RING_READ)
 
     def boot(self, limit=6.0):
         """Let the card's own greeting ("Sounding board version 2.7") play out silently."""
@@ -481,7 +512,8 @@ class SoundingBoard:
     def cancel(self, limit=0.6):
         """Ctrl-X, the driver's momentary silence: it stops speech and clears its output buffer."""
         self.preparing = False
-        self.say("\x18", speech=False)
+        self.queue = b""                 # the text not yet printed goes too; ^X itself at once, past the queue
+        self._print(b"\x18")
         t = self.skip(0.01)
         while t < limit and self.busy():
             t += self.skip(0.01)

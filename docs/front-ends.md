@@ -172,3 +172,64 @@ document labels.
   times faster only in that gap, so speech timing, which A/R paces, is unchanged.
 - **Behaviour:** the same ESC command set as the mini (rate, pitch, voice, inflection; ESC =F
   and ESC =M; Ctrl-X flushes), and it also reads 100 as "one zero zero".
+
+## Automated Functions SmarTalk
+
+The host is `src/hosts/smartalk.py`, in Python on MAME's 8086 (`pc86`), and `src/csrc/smartalk/st_host.c`,
+the same host in C, line for line (`tools/check_st_host.py`: every chip write the same). The voice,
+`st_voice.h`, gives it NVDA's settings and the shared text path; the 0.8 add-on carries it as the "SmarTalk"
+firmware type when `S_TALK.EXE` is in the local firmware folder (`tools/check_st_voice.py`). SAPI, Linux and
+Android do not offer it yet.
+
+- **The box:** a five-ounce SSI-263 on the PC's parallel port (Automated Functions, Arlington,
+  Virginia, 1995), with nothing to think with: the text-to-speech is their DOS TSR, version
+  1.21 (1995-11-15). `S_TALK.EXE` is the whole of it in conventional memory, its rules and
+  exception dictionary included; `XS_TALK.EXE` is the same with the tables in XMS. A screen
+  reader prints to it on INT 17h, in the Accent's commands or SmarTalk's own (`TECHMAN.TXT`
+  on its disk).
+- **The machine:** the host loads `S_TALK.EXE` as DOS would, with the command line the
+  installer writes (`L1 I7 T0 F3 S1`), until it goes resident. It hooks INT 8, 9, 14h, 16h,
+  17h, 28h and the port's IRQ7. The box, read from the TSR's code and confirmed by it
+  speaking (addresses are the EXE image's):
+
+  | Line | What it is |
+  |---|---|
+  | data (378h) | the byte for the chip |
+  | control bit 0 | /STROBE: the data latches into the selected register when it is released |
+  | control bits 1–3 | the register, from the table at 0C2D: R0..R4 = 03, 01, 07, 05, 0D (with the strobe bit). As RS0 = NOT bit 1, RS1 = bit 2, RS2 = bit 3 they are 0–3 and 7; the SSI-263 takes any address with RS2 set as R4 |
+  | control bit 4 | the port's interrupt enable, set after each R0 |
+  | ACK (status bit 6) | A/R, high while the chip requests; IRQ7 on its rising edge |
+  | ERROR (bit 3) | INIT (control bit 2), looped back: every 6 timer ticks while idle (54 while speaking) the timer handler flips INIT and expects ERROR to follow. An unplugged port, ERROR floating high, fails every other check |
+  | SELECT (bit 4) | high once the box is ready; the power-up waits for it |
+  | BUSY, PAPER-OUT | read as a powered box's levels (bits 7 = 0, 5 = 1); what drives them is not known |
+
+- **The key to it speaking:** the rules ignore every character until a `{` arrives (15F5).
+  The batch file's last program, `ST_RUN.EXE` ("allows SmarTalk to speak"), sends it: with
+  the tables in conventional memory it prints "{ smartalk ready" and "Using conventional
+  memory." to the TSR. `ST_RUN` is 286 code (POPA), which the 8086 core refuses, so the
+  host's `boot()` sends the same two lines.
+- **Its power-up:** data 00 and control 0B for 20 timer ticks, then data 3F for 20 more
+  (the data lines likely power the box), then R4 = E3, R2 = F8, and the mode set (R0 = C0,
+  R3 = DA then 5A). The TSR also calibrates its strobe delay against the timer.
+- **Behaviour:** one R0 write per phoneme (the Accent-mini sends most phonemes two or three
+  times), and short pauses: a sentence ends with a couple of PA phonemes. The Accent's
+  ESC R, P and V map onto its own rate, pitch and tone (V5 is tone I, R4 = E4); at rate 9 it
+  goes monotone. Ctrl-X flushes at once, and the settings stay. It reads one- and two-digit
+  numbers as words, longer ones digit by digit, and with its punctuation off (the default) it says
+  no "$", "%" or decimal point, so the voice turns dollar amounts and percents into words before
+  the shared number words.
+- **The voice's settings:** NVDA's rate and pitch on its 0–9 (`ESC >`, `ESC P`; 50 is its 5),
+  the variant as its tone A–Z (`ESC {`, I by default), "Voice inflection" as `ESC m`, and the
+  volume as the audio's gain. The box's own volume is set to 9, its top step (`ESC <9`): at its
+  default, 4, it was 4.2 dB under the Speak-Out, the Accents and the Sounding Board, and at 9 it is
+  within 0.2 dB of them. Each command is sent only when it changes.
+- **Its glides, and the snap:** the TSR runs the chip in mode 3 (transitioned inflection) and
+  writes every pitch target with R1's low bits 0, the slowest glide field, in jumps of several
+  steps. On the measured glide law a real chip slides just as the emulated one does, so inside a
+  phrase the pitch lags its targets: that is the TSR's own sound and is kept. At a phrase's start
+  it was a swoop: speech starts with a PA carrying the last phrase's pitch base, then the first
+  phoneme carries this one's, so each phrase slid in from where the last ended, and a capital or a
+  new pitch setting slid up late. The voice snaps both of those changes (the host feature the
+  Speak-Out and Accent voices use for capitals), and nothing after the first phoneme.
+  Text goes in parts of up to 160 characters, the next while about 12 phonemes are still queued,
+  so no call waits on the TSR's 1,200-byte buffer.

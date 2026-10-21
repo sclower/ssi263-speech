@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-"""The Speak-Out, the Accents and the Mockingboard in ssi263speech.dll (src/csrc/voices.h: so_voice.h, am_voice.h,
-as_voice.h, mockingboard/mb_voice.h), for their NVDA drivers (0.7.5: no Python host, no Python front end; the
-Mockingboard since 0.8).  ctypes only, Python 3.7 to 3.13, 32- and 64-bit.
+"""The Speak-Out, the Accents, the Mockingboard and the SmarTalk in ssi263speech.dll (src/csrc/voices.h: so_voice.h,
+am_voice.h, as_voice.h, mockingboard/mb_voice.h, smartalk/st_voice.h), for their NVDA drivers (0.7.5: no Python host,
+no Python front end; the Mockingboard since 0.8, the SmarTalk after it).  ctypes only, Python 3.7 to 3.13, 32- and
+64-bit.
 
 One class per unit, with the methods the drivers' 0.7.0 Python boxes had where the drivers call them -- say() (the
 text as the unit is sent it), cancel() (the flush after a cancelled job), a chip with time and regs, on_write for the
@@ -106,6 +107,21 @@ def load(path):
         _sig(lib, "mbv_host", _P, [_P])
         _sig(lib, "mbh_chip", _P, [_P])
         _sig(lib, "mbh_get_int", _I, [_P, _S])
+    if hasattr(lib, "stv_create"):                        # the SmarTalk: st_voice.h's one-text API
+        _sig(lib, "stv_create", _P, [_S, ctypes.c_size_t, _D] + err)
+        _sig(lib, "stv_destroy", None, [_P])
+        _sig(lib, "stv_set", None, [_P] + [_I] * 6)
+        _sig(lib, "stv_speak", _I, [_P, _S, _I])
+        _sig(lib, "stv_render", _I, [_P, ctypes.POINTER(_SHORTS), ctypes.POINTER(_I)])
+        _sig(lib, "stv_cancel", None, [_P])
+        _sig(lib, "stv_fault", _I, [_P])
+        _sig(lib, "stv_host", _P, [_P])
+        _sig(lib, "sth_chip", _P, [_P])
+        _sig(lib, "sth_get_double", _D, [_P, _S])
+        _sig(lib, "sth_get_int", _I, [_P, _S])
+        _sig(lib, "sth_set_int", None, [_P, _S, _I])
+        _sig(lib, "sth_writes", _I, [_P, wl])
+        _sig(lib, "sth_clear_writes", None, [_P])
     _libs[path] = lib
     return lib
 
@@ -406,6 +422,81 @@ class MockingboardC:
         v, self._v = self._v, None
         if v:
             self._lib.mbv_destroy(v)
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+
+
+class SmarTalkC:
+    """Automated Functions' SmarTalk: its DOS text-to-speech (S_TALK.EXE 1.21) on MAME's 8086 and the box on LPT1, and
+    the voice's text path (smartalk/st_voice.h).  The Mockingboard's API: one text at a time (said in parts, the next
+    while the box still talks), a capital as that text's pitch offset; render() until done."""
+
+    def __init__(self, lib_path, firmware, out_rate):
+        self._lib = load(lib_path)
+        if not hasattr(self._lib, "stv_create"):
+            raise NativeVoiceError("SmarTalkC: this ssi263speech.dll has no SmarTalk")
+        self.out_rate = out_rate
+        self._pcm = _SHORTS()
+        self._done = _I(0)
+        self._v = None
+        data = _read(firmware)
+        err = ctypes.create_string_buffer(256)
+        v = self._lib.stv_create(data, len(data), float(out_rate), err, 256)
+        if not v:
+            raise NativeVoiceError("SmarTalkC: %s" % err.value.decode("latin-1", "replace"))
+        self._v = v
+
+    def set(self, rate, pitch, tone, volume, inflection, numbers):
+        """NVDA's scales, tone 0-25 = A-Z (st_voice.h); used from the next say()"""
+        self._lib.stv_set(self._v, int(rate), int(pitch), int(tone), int(volume), 1 if inflection else 0,
+                          1 if numbers else 0)
+
+    def say(self, text, pitch_offset=0):
+        """one text item, with a capital's offset; False when there is nothing to say"""
+        data = text.encode("utf-8", "replace")
+        return bool(self._lib.stv_speak(self._v, data, int(pitch_offset or 0)))
+
+    def render(self):
+        """the next 30 ms block: (16-bit PCM bytes, done)"""
+        n = self._lib.stv_render(self._v, ctypes.byref(self._pcm), ctypes.byref(self._done))
+        data = ctypes.string_at(self._pcm, 2 * n) if n > 0 else b""
+        return data, bool(self._done.value)
+
+    def cancel(self):
+        self._lib.stv_cancel(self._v)
+
+    @property
+    def fault(self):
+        """the host faulted or the box stalled: the driver boots a new one"""
+        return bool(self._lib.stv_fault(self._v))
+
+    @property
+    def regs(self):
+        """the chip's five registers, for the tests"""
+        chip = self._lib.sth_chip(self._lib.stv_host(self._v))
+        return [self._lib.ssi263_reg(chip, i) for i in range(5)]
+
+    def log_writes(self, on):
+        """keep every chip write for writes() (the tests)"""
+        self._lib.sth_set_int(self._lib.stv_host(self._v), b"log_writes", 1 if on else 0)
+
+    def writes(self):
+        """the chip writes kept since the last call, as (chip time, register, value)"""
+        h = self._lib.stv_host(self._v)
+        p = ctypes.POINTER(_Write)()
+        n = self._lib.sth_writes(h, ctypes.byref(p))
+        out = [(p[i].t, p[i].reg, p[i].val) for i in range(n)]
+        self._lib.sth_clear_writes(h)
+        return out
+
+    def close(self):
+        v, self._v = self._v, None
+        if v:
+            self._lib.stv_destroy(v)
 
     def __del__(self):
         try:

@@ -6,7 +6,9 @@ their staged synthDrivers (each driver and its engine package) are moved whole i
 synthDrivers/_ssi263_unified -- so each unit here is that add-on's, file for file.  The Mockingboard's driver
 (nvda/mockingboard) is staged beside them with its engine: the shared binding, the library, its firmware file when
 the local firmware folder has it (firmware/sweet-micro-mockingboard, never in the repository; without it the voice is
-not staged) and its notices.  GW Micro's Sounding Board drivers (SBLOAD.COM, SB.COM 2.7) go with the Speak-Out's unit,
+not staged) and its notices.  So is the SmarTalk's (nvda/smartalk), with Automated Functions' S_TALK.EXE when
+firmware/automated-functions-smartalk has it -- optional in a release too: whether a release carries it is decided for
+the release, never by default here.  GW Micro's Sounding Board drivers (SBLOAD.COM, SB.COM 2.7) go with the Speak-Out's unit,
 as its SPEAKOUT.HEX does (Tomi, 2026-10-18: bundled on the desktop, imported on the phones).
 
     python nvda/build_ssi263.py                # a release: every unit built fresh, every voice required
@@ -38,6 +40,7 @@ UNITS = ("blazie", "speakout", "accent")
 MB_FILE = os.path.join(REPO, "firmware", "sweet-micro-mockingboard", "mockingboard-tts-1.1.bin")
 MB_FILE_EARLY = os.path.join(REPO, "firmware", "sweet-micro-mockingboard", "mockingboard-tts-early.bin")
 SB_FILES = [os.path.join(REPO, "firmware", "gw-micro-sounding-board", n) for n in ("SBLOAD.COM", "SB.COM")]
+ST_FILE = os.path.join(REPO, "firmware", "automated-functions-smartalk", "S_TALK.EXE")
 # Apple II disk images are never shipped (Tomi, 2026-10-09): the toolkit's disk also carries Apple's DOS 3.3 and
 # Sweet Micro's other programs; only the voice's own file is staged
 DISK_IMAGES = (".dsk", ".do", ".po", ".nib", ".woz", ".2mg")
@@ -49,6 +52,32 @@ Toolkit disk) and mockingboard-tts-early.bin (the earlier TEXT TO SPEECH and its
 1). They are not ours; they are here so the card can speak again, and they will be removed if their rights holders ask.
 They are not covered by this add-on's MIT license.
 """
+
+
+ST_NOTICE = """The SmarTalk's text-to-speech -- notice
+
+This add-on carries Automated Functions' text-to-speech for the SmarTalk: S_TALK.EXE, version 1.21 (15 November 1995),
+from the SmarTalk V1.21 disk (Automated Functions, Inc., Arlington, Virginia). The disk's README.TXT says: "Please feel
+free to share the new version of the SmarTalk software with anyone who needs it." It is not ours; it is here so the
+box can speak again, and it will be removed if its rights holders ask. It is not covered by this add-on's MIT license.
+"""
+
+
+def stage_smartalk(unified):
+    """the SmarTalk's driver and engine, with S_TALK.EXE and its notice; False (nothing staged) without it"""
+    if not os.path.isfile(ST_FILE):
+        print("note: no %s: the SmarTalk is not staged" % os.path.relpath(ST_FILE, REPO))
+        return False
+    shutil.copy2(os.path.join(HERE, "smartalk", "synthDrivers", "smartalk.py"), unified)
+    eng = os.path.join(unified, "_ssi263_smartalk")
+    os.makedirs(eng)
+    copy_native_binding(eng)
+    shutil.copy2(ST_FILE, eng)
+    lic = os.path.join(eng, "licenses")
+    os.makedirs(lic, exist_ok=True)
+    with open(os.path.join(lic, "SmarTalk-software-notice.txt"), "w", encoding="utf-8") as f:
+        f.write(ST_NOTICE)
+    return True
 
 
 def stage_mockingboard(unified):
@@ -75,6 +104,7 @@ def stage_mockingboard(unified):
 
 
 U = "synthDrivers/_ssi263_unified/"
+ST_SHA256 = "6cef7bc467959960505bfd771d07f387b7bdfad25bad2b51801ae56bb8d78e6c"
 MB_SHA256 = "88e1e90f1e76b7afa2f370db3c3bf34892c9621b5360304359242570b41bdfae"
 MB_SHA256_EARLY = "c7c049b1b61792719e21e461a2a8c25fc32c12882c81305814a3dc67af6e5835"
 
@@ -105,10 +135,16 @@ def expected_files():
     }
     for n in ("u2.BIN", "u3.BIN", "u4.BIN"):
         out[U + "_ssi263_accent/accent-sa/" + n] = os.path.join(fw, "aicom-accent-sa", n)
-    for unit in ("speakout", "accent", "mockingboard"):
+    units = ["speakout", "accent", "mockingboard"]
+    if os.path.isfile(ST_FILE):              # the SmarTalk, staged when its S_TALK.EXE is here (stage_smartalk)
+        units.append("smartalk")
+        out[U + "smartalk.py"] = os.path.join(HERE, "smartalk", "synthDrivers", "smartalk.py")
+        out[U + "_ssi263_smartalk/S_TALK.EXE"] = ST_SHA256
+        out[U + "_ssi263_smartalk/licenses/SmarTalk-software-notice.txt"] = None
+    for unit in units:
         for n in ("ssi263speech.py", "ssi263_rates.py"):
             out[U + "_ssi263_%s/%s" % (unit, n)] = os.path.join(HERE, "shared", n)
-    for unit in ("blazie", "speakout", "accent", "mockingboard"):
+    for unit in ["blazie"] + units:
         for arch in ("x64", "x86"):
             out[U + "_ssi263_%s/bin/%s/ssi263speech.dll" % (unit, arch)] = os.path.join(
                 REPO, "build", "win", arch, "ssi263speech.dll")
@@ -180,6 +216,7 @@ def main():
     if not stage_mockingboard(unified):
         os.remove(os.path.join(unified, "mockingboard.py"))
         rm(os.path.join(unified, "_ssi263_mockingboard"))
+    stage_smartalk(unified)
     shutil.copy2(os.path.join(HERE, "ssi263", "synthDrivers", "ssi263.py"), sd)
     shutil.copytree(os.path.join(HERE, "ssi263", "globalPlugins"), os.path.join(BUILD, "globalPlugins"),
                     ignore=shutil.ignore_patterns("__pycache__"))

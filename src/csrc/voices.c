@@ -23,6 +23,9 @@
 #ifdef SSV_HAVE_MOCKINGBOARD
 #include "mockingboard/mb_voice.h"
 #endif
+#ifdef SSV_HAVE_SMARTALK
+#include "smartalk/st_voice.h"
+#endif
 
 /* ---- the table ---------------------------------------------------------------------------------------------------- */
 static const ssv_info VOICES[] = {
@@ -54,6 +57,10 @@ static const ssv_info VOICES[] = {
        those who want them -- imported only, never shipped.  Last, so no earlier voice's index or slot moves */
     {"speakout:soundingboard", "Sounding Board (GW Micro)", "en", SSV_SOUNDINGBOARD, 9 + SSV_BLAZIE_RELEASE_VOICES,
      {"gw-micro-sounding-board/SBLOAD.COM", "gw-micro-sounding-board/SB.COM", NULL}},
+    /* Automated Functions' SmarTalk (1995): the box's own DOS text-to-speech, S_TALK.EXE 1.21, on the Accent-mini's
+       pc86.  After the Sounding Board, so no earlier voice's index or slot moves */
+    {"smartalk:smartalk", "SmarTalk (Automated Functions)", "en", SSV_SMARTALK, 10 + SSV_BLAZIE_RELEASE_VOICES,
+     {"automated-functions-smartalk/S_TALK.EXE", NULL}},
 };
 #define NVOICES ((int)(sizeof VOICES / sizeof VOICES[0]))
 
@@ -287,6 +294,35 @@ static void eng_mb_cancel(void *u) { mbv_cancel((mb_voice *)u); }
 static void eng_mb_destroy(void *u) { mbv_destroy((mb_voice *)u); }
 #endif
 
+#ifdef SSV_HAVE_SMARTALK
+/* the SmarTalk: st_voice.h (rate, pitch, tone A-Z, volume, inflection on or off, number words) */
+static void *eng_st_create(const ssv_info *info, const ssv_source *src, const ssv_boot *b, char *err, int errlen)
+{
+    size_t n;
+    unsigned char *owned;
+    const unsigned char *d = source_bytes(src, 0, &n, &owned);
+    st_voice *v = NULL;
+    if (d)
+        v = stv_create(d, n, (double)b->sample_rate, err, errlen);
+    else
+        snprintf(err, errlen, "could not read the SmarTalk's %s", info->files[0]);
+    free(owned);
+    return v;
+}
+static void eng_st_set(void *u, const ssv_settings *s)
+{
+    stv_set((st_voice *)u, s->rate, s->pitch, s->tone, s->volume, s->inflection >= 50, s->numbers);
+}
+static int eng_st_speak(void *u, const char *utf8, int pitch_offset)
+{
+    int r = stv_speak((st_voice *)u, utf8, pitch_offset);
+    return stv_fault((st_voice *)u) ? -1 : r > 0;
+}
+static int eng_st_render(void *u, const short **pcm, int *done) { return stv_render((st_voice *)u, pcm, done); }
+static void eng_st_cancel(void *u) { stv_cancel((st_voice *)u); }
+static void eng_st_destroy(void *u) { stv_destroy((st_voice *)u); }
+#endif
+
 static const ssv_engine *engine(int kind)
 {
     static const ssv_engine bl = {eng_bl_create, eng_bl_set, eng_bl_speak, eng_bl_render, eng_bl_cancel, eng_bl_destroy};
@@ -303,6 +339,9 @@ static const ssv_engine *engine(int kind)
 #ifdef SSV_HAVE_SOUNDINGBOARD
     static const ssv_engine sb = {eng_sb_create, eng_so_set, eng_so_speak, eng_so_render, eng_so_cancel, eng_so_destroy};
 #endif
+#ifdef SSV_HAVE_SMARTALK
+    static const ssv_engine st = {eng_st_create, eng_st_set, eng_st_speak, eng_st_render, eng_st_cancel, eng_st_destroy};
+#endif
     switch (kind) {
     case SSV_BLAZIE: return &bl;
     case SSV_ACCENT_SA: return &as;
@@ -317,6 +356,9 @@ static const ssv_engine *engine(int kind)
 #endif
 #ifdef SSV_HAVE_SOUNDINGBOARD
     case SSV_SOUNDINGBOARD: return &sb;
+#endif
+#ifdef SSV_HAVE_SMARTALK
+    case SSV_SMARTALK: return &st;
 #endif
     default: return NULL;
     }
@@ -364,6 +406,7 @@ SSV_API void ssv_defaults(int i, ssv_settings *s)
     s->tone = kind == SSV_BLAZIE ? 7          /* DEFAULT_TONE */
             : kind == SSV_SPEAKOUT || kind == SSV_SOUNDINGBOARD ? 8   /* self._tone = "i" (the Sounding Board: its manual's too) */
             : kind == SSV_ACCENT_MINI ? 5     /* self._voice_char = "5" */
+            : kind == SSV_SMARTALK ? 8        /* smartalk.py: self._tone = "i", the TSR's own */
             : 0;
 }
 

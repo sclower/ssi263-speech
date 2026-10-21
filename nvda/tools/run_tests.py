@@ -1902,6 +1902,32 @@ for brk, marks in (
                        r"^BASIC tones: 28 FAILED$"])):
     CHECKS.append(check("BASIC tones CONTROL (%s, must fail)" % brk, [PY, TONES], env={"TONE_TRACT_BREAK": brk},
                         expect_fail=True, fail_marks=marks))
+# Automated Functions' SmarTalk (src/csrc/smartalk): S_TALK.EXE 1.21 on MAME's 8086 and the box on LPT1 -- its host in
+# C (st_host.c) = the Python reference (src/hosts/smartalk.py), write for write, the control running the reference's
+# chip 1 % fast; and the voice (voices.c smartalk:smartalk, st_voice.h) through the table and the NVDA binding: each
+# setting on the chip, the settings kept across a cancel, a long text in parts, the text path -- its control pins the
+# tone, which only the tone check may then fail.  The software is a local copy (firmware/automated-functions-smartalk)
+ST_EXE = os.path.join(os.path.dirname(os.path.dirname(HERE)), "firmware", "automated-functions-smartalk", "S_TALK.EXE")
+if os.path.isfile(ST_EXE):
+    ST_HOST = os.path.join(os.path.dirname(os.path.dirname(HERE)), "tools", "check_st_host.py")
+    ST_VOICE = os.path.join(os.path.dirname(os.path.dirname(HERE)), "tools", "check_st_voice.py")
+    CHECKS.append(check("SmarTalk host in C = smartalk.py, write for write", [PY, ST_HOST]))
+    CHECKS.append(check("SmarTalk host CONTROL (the reference's chip 1 % fast, must fail)", [PY, ST_HOST],
+                        env={"ST_HOST_BREAK": "1"}, expect_fail=True,
+                        fail_marks=[r"^FAIL  every chip write: ", r"^st host: 1 FAILED$"]))
+    CHECKS.append(check("SmarTalk voice: settings, cancel, parts, text (voice API and binding)", [PY, ST_VOICE]))
+    CHECKS.append(check("SmarTalk voice CONTROL (the tone pinned to A, must fail)", [PY, ST_VOICE],
+                        env={"ST_VOICE_BREAK": "1"}, expect_fail=True,
+                        fail_marks=[r"^FAIL  tone: A lower, Z higher than I ", r"^ok    volume: the gain only ",
+                                    r"^st voice: 1 FAILED$"]))
+    # the pitch snap at an utterance's start disarmed: the phrase start, the capital and a new pitch setting must
+    # fail, the glides inside the phrase still pass
+    CHECKS.append(check("SmarTalk voice CONTROL (no pitch snap, must fail)", [PY, ST_VOICE],
+                        env={"ST_VOICE_BREAK": "snap"}, expect_fail=True,
+                        fail_marks=[r"^FAIL  a phrase starts on its own pitch ",
+                                    r"^FAIL  a capital's pitch lands on its letter ",
+                                    r"^FAIL  a new pitch setting lands at once ",
+                                    r"^ok    the glides inside the phrase stay ", r"^st voice: 3 FAILED$"]))
 # The Mockingboard (src/csrc/mockingboard, 0.8): Sweet Micro's text-to-speech on Fake6502 and the board -- the 6502
 # core's contract (test_m6502_contract.c) with its must-fail controls (cpu/m6502_controls.py), and the host's, the
 # voice's and the disk reader's tests with theirs (mockingboard/mb_controls.py: each suite as it is, then each rule

@@ -4,13 +4,13 @@ and the order of the index and done notifications must be equal, and every notif
 was given (NVDA drops one whose synth is not getSynth(): the units' notifySynth).
 
     python unified_driver_equiv.py [braillelite2000 braillelite2000-es speakout accentsa accentmini mockingboard
-                                    mockingboardearly]
+                                    mockingboardearly smartalk]
     UNIFIED_EQUIV_BREAK=notify    control: the units report as themselves (notifySynth ignored) -- every case with
                                   a notification must fail on the synth, the PCM still equal
     UNIFIED_EQUIV_BREAK=memory    control: the wrapper does not forward the variant -- the variant cases must DIFFER
 
 The reference is the 0.7-style add-on build of that unit (nvda/dist/<blazie|speakout|accent>-build); the
-Mockingboard's, its own driver from the 0.8 build's private package.  The cases are native_driver_equiv.py's (the
+Mockingboard's and the SmarTalk's, its own driver from the 0.8 build's private package.  The cases are native_driver_equiv.py's (the
 Braille Lite: its COMMON ones and its own tones), cancels made at a fixed count of fed blocks on both sides.  Each
 side runs in its own process (the units' module names).  Build first: nvda/build_ssi263.py.
 """
@@ -51,6 +51,7 @@ UNITS = {
     "accentmini": ("accent", "accentmini", "mini", "en"),
     "mockingboard": (None, "mockingboard", None, "en"),
     "mockingboardearly": (None, "mockingboard", "early", "en"),
+    "smartalk": (None, "smartalk", None, "en"),
 }
 BRAILLE_LITE = [c for c in nde.COMMON if "sr" not in c["settings"]] + [
     case("tone 0", [T("Tone zero, the lowest.")], variant="0"),
@@ -66,6 +67,15 @@ MOCKINGBOARD = [c for c in nde.COMMON] + [
     case("long text in parts", [T(nde.LONG + " " + nde.LONG + " And then some more words to say.")], numbers=True),
 ]
 
+SMARTALK = [c for c in nde.COMMON] + [
+    case("tone A", [T("Tone A, the lowest.")], variant="a"),
+    case("tone Z", [T("Tone Z, the highest.")], variant="z"),
+    case("inflection off", [T("A monotone sentence, is it not?")], voiceInflection=False),
+    case("numbers off", [T("Room 100, 45000 and $6723.")], numbers=False),
+    case("defaults again", [T("Back to tone I, with inflection.")], variant="i", voiceInflection=True, numbers=True),
+    case("long text in parts", [T(nde.LONG + " " + nde.LONG + " And then some more words to say.")]),
+]
+
 
 def cases(fw):
     if fw.startswith("braillelite2000"):
@@ -74,6 +84,8 @@ def cases(fw):
         return nde.SPEAKOUT
     if fw.startswith("mockingboard"):
         return MOCKINGBOARD
+    if fw == "smartalk":
+        return SMARTALK
     return nde.ACCENT
 
 
@@ -171,7 +183,7 @@ def child(fw, side, out):
         for name, setter in (("rate", "_set_rate"), ("pitch", "_set_pitch"), ("volume", "_set_volume"),
                              ("inflection", "_set_inflection"), ("variant", "_set_variant"),
                              ("join", "_set_joinPhrases"), ("short", "_set_shortPauses"),
-                             ("numbers", "_set_numberWords")):
+                             ("numbers", "_set_numberWords"), ("voiceInflection", "_set_voiceInflection")):
             if name in s and hasattr(d, setter):
                 getattr(d, setter)(s[name])
         for name, default in (("rate", 50), ("pitch", 50), ("volume", 100)):
@@ -249,6 +261,10 @@ def main():
         if not os.path.isfile(os.path.join(mb, name)) and f in fws:
             fws = [x for x in fws if x != f]
             print("note: the build has no %s (no firmware file): not compared" % name)
+    st = os.path.join(DIST, "ssi263-build", "synthDrivers", "_ssi263_unified", "_ssi263_smartalk", "S_TALK.EXE")
+    if not os.path.isfile(st) and "smartalk" in fws:
+        fws = [x for x in fws if x != "smartalk"]
+        print("note: the build has no S_TALK.EXE: the SmarTalk not compared")
     if BREAK:
         print("CONTROL: %s" % {"notify": "the units report as themselves",
                                "memory": "the wrapper drops the variant"}[BREAK])

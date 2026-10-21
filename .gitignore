@@ -82,3 +82,5 @@ __pycache__/
 
 # macOS Finder's folder settings
 .DS_Store
+# its disk says to share it: the unmodified TSR is in the repository, under its own notice (README.txt); after *.exe
+!firmware/automated-functions-smartalk/S_TALK.EXE

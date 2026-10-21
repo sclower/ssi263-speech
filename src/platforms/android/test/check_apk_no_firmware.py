@@ -87,7 +87,10 @@ if MOCKINGBOARD:
 REFUSED = {"1c6930c8c6aed0550bc267c14032f9195b450ed95de606f2fa9727e2b7eb1eb1": "the Speak-Out's SPEAKOUT.HEX",
            # the Sounding Board's two drivers (0.8.5, imported only; .COM files no name rule here catches)
            "f821c9c28180cfcecc0e5b422bb30b1b8a97d37bac7188405f066baa56cd7b72": "the Sounding Board's SBLOAD.COM",
-           "0946a2f2caa5acad54ef2113d1ebb5f40f686219eea0b3697e478dce19c9158e": "the Sounding Board's SB.COM"}
+           "0946a2f2caa5acad54ef2113d1ebb5f40f686219eea0b3697e478dce19c9158e": "the Sounding Board's SB.COM",
+           # the SmarTalk's TSR: in the repository and the NVDA add-on (its disk says to share it), never in the phone
+           # apps, which stay firmware-free (Tomi, 2026-10-21)
+           "6cef7bc467959960505bfd771d07f387b7bdfad25bad2b51801ae56bb8d78e6c": "the SmarTalk's S_TALK.EXE"}
 # the Mockingboards' files (Sweet Micro's: the GitHub APK carries them, Tomi 2026-10-10), in SWEET_DIR only, with
 # Sweet Micro's notice; build_android.sh takes them from FIRMWARE_MB (local copies, never committed)
 SWEET_DIR = "assets/sweet-micro/"

@@ -41,7 +41,7 @@ typedef struct {
     const char *sha256;                    /* the image */
     const char *state;                     /* the state made from it */
     const char *name;                      /* the unit's name in the emulators' menus */
-    const char *voice_name;                /* the voice's name, the language in its own words, or NULL */
+    const char *voice_name;                /* the voice's name, its language in English, or NULL */
     const char *file;                      /* the file name a person is expected to bring */
     const char *label;
 } bl_release;

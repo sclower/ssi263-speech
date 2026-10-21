@@ -6,7 +6,7 @@
  * module>:<voice>"; the Mockingboard, new in 0.8, has no add-on of its own before the unified one):
  *
  *     blazie:blazie       Braille Lite 2000 (June 2003)   bl_voice.h (BL2ENG.BNS + its warm state)
- *     blazie:blazie_es    Braille Lite 2000 (español)     bl_voice.h (BL2SPA.BNS + its fresh state)
+ *     blazie:blazie_es    Braille Lite 2000 (Spanish)     bl_voice.h (BL2SPA.BNS + its fresh state)
  *     speakout:speakout   Speak-Out                       so_voice.h (SPEAKOUT.HEX)       with SSV_HAVE_SPEAKOUT
  *     accentmini:mini     Accent-mini                     am_voice.h (SPKEMS.DVC)         with SSV_HAVE_ACCENTMINI
  *     accentmini:sa       Accent SA                       as_voice.h (u2, u3, u4)

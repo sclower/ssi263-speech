@@ -53,13 +53,14 @@ FIRMWARE_TYPES = OrderedDict([
                                                                    ("de", "blazie_de"), ("it", "blazie_it"),
                                                                    ("sk", "blazie_sk")]))),
     ("speakout", ("Speak-Out", speakout, OrderedDict([("en", "speakout")]))),
-    ("accentsa", ("Accent SA", accentmini, OrderedDict([("en", "sa")]))),
-    ("accentmini", ("Accent-mini", accentmini, OrderedDict([("en", "mini")]))),
 ])
 # 0.8.5: GW Micro's Sounding Board, the Speak-Out driver's second voice (the card's DOS drivers, the same front end),
-# a firmware type of its own as the two Accents are, when its two files are beside the Speak-Out's
+# a firmware type of its own as the two Accents are, when its two files are beside the Speak-Out's -- and listed
+# right after it, the two sharing their rules (Tomi)
 if getattr(speakout.SynthDriver, "_soundingboard_here", None) and speakout.SynthDriver._soundingboard_here():
     FIRMWARE_TYPES["soundingboard"] = ("Sounding Board (GW Micro)", speakout, OrderedDict([("en", "soundingboard")]))
+FIRMWARE_TYPES["accentsa"] = ("Accent SA", accentmini, OrderedDict([("en", "sa")]))
+FIRMWARE_TYPES["accentmini"] = ("Accent-mini", accentmini, OrderedDict([("en", "mini")]))
 if mockingboard is not None:
     FIRMWARE_TYPES["mockingboard"] = ("Mockingboard", mockingboard, OrderedDict([("en", "mockingboard")]))
     # the earlier text-to-speech of Mockingboard disk 1: its own rules ("Mocking-bo-wrd", "dough-lars")
@@ -67,7 +68,7 @@ if mockingboard is not None:
 # Automated Functions' SmarTalk: the box's own DOS text-to-speech (S_TALK.EXE 1.21), after the others
 if smartalk is not None:
     FIRMWARE_TYPES["smartalk"] = ("SmarTalk", smartalk, OrderedDict([("en", "smartalk")]))
-LANGUAGES = {"en": "English", "es": "Español", "de": "Deutsch", "it": "Italiano", "sk": "Slovenčina"}
+LANGUAGES = {"en": "English", "es": "Spanish", "de": "German", "it": "Italian", "sk": "Slovak"}
 # firmware types that are gone, and where their users land: (the type now, the language it was).  A saved one loads as
 # that type in that language, its own saved values filling in only what the new type has none of (_saved); the next
 # save writes the new type, and the old one is never read again.  0.8's Braille 'n Speak 2000 (Slovak only)

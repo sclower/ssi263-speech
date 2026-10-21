@@ -388,10 +388,10 @@ print("voices:", "; ".join(v[4:].replace("\t", " / ") for v in voices[:-1]))
 listed = [v[4:].split("\t")[0] for v in voices[:-1]]
 # the add-ons' voices, by their names, with their languages: those built in whose files are there, in this order
 EXPECTED = [("Braille Lite 2000", "en-US", ("BL2ENG.BNS", "bl2_2003_warm.state")),
-            ("Braille Lite 2000 (español)", "es-ES", ("BL2SPA.BNS", "bl2spa_fresh.state")),
-            ("Braille Lite 2000 (Deutsch)", "de-DE", ("Lite2000_de.BNS", "lite2000_de_fresh.state")),
-            ("Braille Lite 2000 (italiano)", "it-IT", ("Lite2000_it.BNS", "lite2000_it_fresh.state")),
-            ("Braille 'n Speak 2000 (slovenčina)", "sk-SK", ("BS2SLL.BNS", "bs2sll_fresh.state")),
+            ("Braille Lite 2000 (Spanish)", "es-ES", ("BL2SPA.BNS", "bl2spa_fresh.state")),
+            ("Braille Lite 2000 (German)", "de-DE", ("Lite2000_de.BNS", "lite2000_de_fresh.state")),
+            ("Braille Lite 2000 (Italian)", "it-IT", ("Lite2000_it.BNS", "lite2000_it_fresh.state")),
+            ("Braille 'n Speak 2000 (Slovak)", "sk-SK", ("BS2SLL.BNS", "bs2sll_fresh.state")),
             ("Accent SA", "en-US", tuple("aicom-accent-sa/" + f for f in FW_DIRS["aicom-accent-sa"])),
             ("Accent-mini", "en-US", ("aicom-accent-mini/SPKEMS.DVC",)),
             ("Speak-Out", "en-US", ("gw-micro-speakout/SPEAKOUT.HEX",)),
@@ -436,7 +436,16 @@ results.append(same("key", pcm, ref.say("space")))
 if os.path.isfile(os.path.join(DATA, "BL2SPA.BNS")):
     m.set(language="es")
     pcm, ev, _ = m.speak("Mañana, ¿qué tal?")
-    results.append(same("spanish", pcm, Ref(spanish=True).say("Mañana, ¿qué tal?")))
+    es_ref = Ref(spanish=True)                  # one unit, as the module's: the second time follows the first
+    results.append(same("spanish", pcm, es_ref.say("Mañana, ¿qué tal?")))
+    # the name it had until the four were named in English, as a client may have saved it: still the Spanish voice
+    # (sd_voices.c FORMER).  From English and the default first, so a name ignored would stay on the English voice
+    m.set(language="en")
+    m.set(synthesis_voice="Braille Lite 2000")
+    m.set(synthesis_voice="Braille Lite 2000 (español)")
+    pcm, ev, _ = m.speak("Mañana, ¿qué tal?")
+    results.append(same("former", pcm, es_ref.say("Mañana, ¿qué tal?")))
+    m.set(language="es")                        # as the check before left it, for those after
 # the 0.8 units, each when its files are there: chosen by its language, spoken as its own reference
 for lang, text in (("de", "Guten Tag, schön."), ("it", "Buongiorno, città."), ("sk", "Dobrý deň, čaj.")):
     if os.path.isfile(os.path.join(DATA, UNITS[lang][0])):

@@ -31,7 +31,7 @@
 static const ssv_info VOICES[] = {
     {"blazie:blazie", "Braille Lite 2000 (June 2003)", "en", SSV_BLAZIE, 0,
      {"blazie/BL2ENG.BNS", "blazie/bl2_2003_warm.state", NULL}},
-    {"blazie:blazie_es", "Braille Lite 2000 (espa\xc3\xb1ol)", "es", SSV_BLAZIE, 1,
+    {"blazie:blazie_es", "Braille Lite 2000 (Spanish)", "es", SSV_BLAZIE, 1,
      {"blazie/spanish/BL2SPA.BNS", "blazie/spanish/bl2spa_fresh.state", NULL}},
     {"speakout:speakout", "Speak-Out", "en", SSV_SPEAKOUT, 2, {"gw-micro-speakout/SPEAKOUT.HEX", NULL}},
     {"accentmini:mini", "Accent-mini", "en", SSV_ACCENT_MINI, 3, {"aicom-accent-mini/SPKEMS.DVC", NULL}},
@@ -44,11 +44,11 @@ static const ssv_info VOICES[] = {
      {"sweet-micro-mockingboard/mockingboard-tts-early.bin", NULL}},
     /* 0.8: the Braille Lite 2000 in German and Italian (Blazie's September 2000 update, an anonymous donation) and
        the Braille 'n Speak 2000 in Slovak -- each unit's own rules, through the same voice (bl_encoding) */
-    {"blazie:blazie_de", "Braille Lite 2000 (Deutsch)", "de", SSV_BLAZIE, 6,
+    {"blazie:blazie_de", "Braille Lite 2000 (German)", "de", SSV_BLAZIE, 6,
      {"blazie/german/Lite2000.BNS", "blazie/german/lite2000_de_fresh.state", NULL}},
-    {"blazie:blazie_it", "Braille Lite 2000 (italiano)", "it", SSV_BLAZIE, 7,
+    {"blazie:blazie_it", "Braille Lite 2000 (Italian)", "it", SSV_BLAZIE, 7,
      {"blazie/italian/Lite2000.BNS", "blazie/italian/lite2000_it_fresh.state", NULL}},
-    {"blazie:blazie_sk", "Braille 'n Speak 2000 (sloven\xc4\x8dina)", "sk", SSV_BLAZIE, 8,
+    {"blazie:blazie_sk", "Braille 'n Speak 2000 (Slovak)", "sk", SSV_BLAZIE, 8,
      {"blazie/bns2000/BS2SLL.BNS", "blazie/bns2000/bs2sll_fresh.state", NULL}},
     /* 0.8: the Braille Lite 2000 in 17 more languages (Blazie's updates, an anonymous donation), one voice per
        language, from the release table (blazie/bl_languages.txt, generated: voices_blazie.h) */

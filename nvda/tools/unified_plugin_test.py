@@ -478,7 +478,7 @@ class Container:
         old = [types.SimpleNamespace(id=str(i), displayName="Tone %d" % i) for i in range(27)]
         self._variants, self.variantList = old, Combo(o.displayName for o in old)
         self._voices = [types.SimpleNamespace(id="en", displayName="English"),
-                        types.SimpleNamespace(id="es", displayName="Español")]
+                        types.SimpleNamespace(id="es", displayName="Spanish")]
         self.voiceList = Combo(o.displayName for o in self._voices)
         self.whineList = Combo(["Off"])
         self._whines = []

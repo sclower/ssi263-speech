@@ -96,10 +96,10 @@ FIRMWARE_SK = os.path.join(_ENGINE_DIR, "BS2SLL.BNS")
 STATE_SK = os.path.join(_ENGINE_DIR, "bs2sll_fresh.state")
 # voice id: (display name, language, firmware, snapshot, text encoding)
 VOICES = {"blazie": ("Braille Lite 2000 (June 2003)", "en", FIRMWARE, STATE, "latin-1"),
-          "blazie_es": ("Braille Lite 2000 (espa\u00f1ol)", "es", FIRMWARE_ES, STATE_ES, "blazie_text_13"),
-          "blazie_de": ("Braille Lite 2000 (Deutsch)", "de", FIRMWARE_DE, STATE_DE, "cp850"),
-          "blazie_it": ("Braille Lite 2000 (italiano)", "it", FIRMWARE_IT, STATE_IT, "blazie_text_14"),
-          "blazie_sk": ("Braille 'n Speak 2000 (sloven\u010dina)", "sk", FIRMWARE_SK, STATE_SK, "blazie_text_7")}
+          "blazie_es": ("Braille Lite 2000 (Spanish)", "es", FIRMWARE_ES, STATE_ES, "blazie_text_13"),
+          "blazie_de": ("Braille Lite 2000 (German)", "de", FIRMWARE_DE, STATE_DE, "cp850"),
+          "blazie_it": ("Braille Lite 2000 (Italian)", "it", FIRMWARE_IT, STATE_IT, "blazie_text_14"),
+          "blazie_sk": ("Braille 'n Speak 2000 (Slovak)", "sk", FIRMWARE_SK, STATE_SK, "blazie_text_7")}
 # "Custom number processing" exists for these languages only; the other units read their numbers themselves
 # (voices.c bl_has_numbers) -- but past twelve digits, a unit whose reader folds a trillion into billions gets the
 # number a digit at a time (_trillions, the release table's trillions column)

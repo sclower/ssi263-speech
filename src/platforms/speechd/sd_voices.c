@@ -43,15 +43,15 @@ typedef struct {
 
 static const voice_def ALL[] = {
     {"blazie:blazie", "Braille Lite 2000", "en-US", "braille-lite", {"BL2ENG.BNS", "bl2_2003_warm.state", NULL}},
-    {"blazie:blazie_es", "Braille Lite 2000 (espa\xc3\xb1ol)", "es-ES", "braille-lite",
+    {"blazie:blazie_es", "Braille Lite 2000 (Spanish)", "es-ES", "braille-lite",
      {"BL2SPA.BNS", "bl2spa_fresh.state", NULL}},
     /* 0.8: the German and Italian Braille Lite 2000 (Blazie's September 2000 update) and the Slovak Braille 'n
        Speak 2000, under the NVDA add-on's names for their files */
-    {"blazie:blazie_de", "Braille Lite 2000 (Deutsch)", "de-DE", "braille-lite",
+    {"blazie:blazie_de", "Braille Lite 2000 (German)", "de-DE", "braille-lite",
      {"Lite2000_de.BNS", "lite2000_de_fresh.state", NULL}},
-    {"blazie:blazie_it", "Braille Lite 2000 (italiano)", "it-IT", "braille-lite",
+    {"blazie:blazie_it", "Braille Lite 2000 (Italian)", "it-IT", "braille-lite",
      {"Lite2000_it.BNS", "lite2000_it_fresh.state", NULL}},
-    {"blazie:blazie_sk", "Braille 'n Speak 2000 (sloven\xc4\x8dina)", "sk-SK", "braille-n-speak",
+    {"blazie:blazie_sk", "Braille 'n Speak 2000 (Slovak)", "sk-SK", "braille-n-speak",
      {"BS2SLL.BNS", "bs2sll_fresh.state", NULL}},
     {"accentmini:sa", "Accent SA", "en-US", "accent-sa",
      {"aicom-accent-sa/u2.BIN", "aicom-accent-sa/u3.BIN", "aicom-accent-sa/u4.BIN", NULL}, {0x10000, 0x8000, 0x8000}},
@@ -90,9 +90,20 @@ const char *sdv_name(int i) { return def(i)->name; }
 const char *sdv_language(int i) { return def(i)->language; }
 const char *sdv_engine(int i) { return def(i)->engine; }
 
+/* the names these voices had until they were named in English, as the other languages are: a client that saved one
+   (speech-dispatcher selects by name) keeps its voice */
+static const char *const FORMER[][2] = {
+    {"Braille Lite 2000 (espa\xc3\xb1ol)", "Braille Lite 2000 (Spanish)"},
+    {"Braille Lite 2000 (Deutsch)", "Braille Lite 2000 (German)"},
+    {"Braille Lite 2000 (italiano)", "Braille Lite 2000 (Italian)"},
+    {"Braille 'n Speak 2000 (sloven\xc4\x8dina)", "Braille 'n Speak 2000 (Slovak)"},
+};
+
 int sdv_find(const char *name)
 {
     int i;
+    for (i = 0; i < (int)(sizeof FORMER / sizeof FORMER[0]); i++)
+        if (!strcmp(name, FORMER[i][0])) name = FORMER[i][1];
     for (i = 0; i < sdv_count(); i++)
         if (!strcmp(name, def(i)->name)) return i;
     return -1;

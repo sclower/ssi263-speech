@@ -48,7 +48,7 @@ try {
     Set-S 'Inflection' 1; Set-S 'Whine' 2
     $whine = Say 'whine'
     Set-S 'Whine' 0
-    $spanish = 'Braille Lite 2000 (espa' + [char]0x00F1 + 'ol)'     # this file stays ASCII (PowerShell 5.1 reads it as ANSI)
+    $spanish = 'Braille Lite 2000 (Spanish)'     # this file stays ASCII (PowerShell 5.1 reads it as ANSI)
     $esText = 'Hola, como estas?'
     # run ahead: each voice's first utterance on freshly booted units (the Whine change above reboots them), against its
     # default, also its first on fresh units -- so a setting the DLL dropped compares like with like and fails

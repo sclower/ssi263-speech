@@ -7,7 +7,7 @@ rules, number reading and inflection are the firmware's own, live. Nothing is re
 | Voice | Language | The device |
 |---|---|---|
 | Braille Lite 2000 | English | Blazie's notetaker in speech-box mode, its June 2003 firmware on a Z180 |
-| Braille Lite 2000 (español) | Spanish | the same, its Spanish firmware (when included) |
+| Braille Lite 2000 (Spanish) | Spanish | the same, its Spanish firmware (when included) |
 | Accent SA | English | Aicom's serial speech box, its own 8085 firmware and dictionary ROMs |
 | Accent-mini | English | Aicom's Accent-mini, its DOS driver on an emulated PC (when the package has it) |
 | Speak-Out | English | GW Micro's 1995 talking box, its V40 firmware (when the package has it) |

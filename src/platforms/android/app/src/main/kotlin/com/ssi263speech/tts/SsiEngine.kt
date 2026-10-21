@@ -22,15 +22,15 @@ object SsiEngine {
         VoiceInfo(SsiNative.ACCENT_SA, "en-US-accentsa", "Aicom Accent SA (English)", Locale("en", "US")),
         VoiceInfo(SsiNative.ACCENT_MINI, "en-US-accentmini", "Aicom Accent-mini (English)", Locale("en", "US")),
         VoiceInfo(SsiNative.ENGLISH, "en-US-braillelite", "Braille Lite 2000 (English)", Locale("en", "US")),
-        VoiceInfo(SsiNative.SPANISH, "es-ES-braillelite", "Braille Lite 2000 (español)", Locale("es", "ES")),
+        VoiceInfo(SsiNative.SPANISH, "es-ES-braillelite", "Braille Lite 2000 (Spanish)", Locale("es", "ES")),
         VoiceInfo(SsiNative.SPEAKOUT, "en-US-speakout", "GW Micro Speak-Out (English)", Locale("en", "US")),
         VoiceInfo(SsiNative.MOCKINGBOARD, "en-US-mockingboard", "Mockingboard (Sweet Micro Systems)",
                   Locale("en", "US")),
         VoiceInfo(SsiNative.MOCKINGBOARD_EARLY, "en-US-mockingboard-early", "Mockingboard, early (Sweet Micro Systems)",
                   Locale("en", "US")),
-        VoiceInfo(SsiNative.GERMAN, "de-DE-braillelite", "Braille Lite 2000 (Deutsch)", Locale("de", "DE")),
-        VoiceInfo(SsiNative.ITALIAN, "it-IT-braillelite", "Braille Lite 2000 (italiano)", Locale("it", "IT")),
-        VoiceInfo(SsiNative.SLOVAK, "sk-SK-braillenspeak", "Braille 'n Speak 2000 (slovenčina)", Locale("sk", "SK")))
+        VoiceInfo(SsiNative.GERMAN, "de-DE-braillelite", "Braille Lite 2000 (German)", Locale("de", "DE")),
+        VoiceInfo(SsiNative.ITALIAN, "it-IT-braillelite", "Braille Lite 2000 (Italian)", Locale("it", "IT")),
+        VoiceInfo(SsiNative.SLOVAK, "sk-SK-braillenspeak", "Braille 'n Speak 2000 (Slovak)", Locale("sk", "SK")))
 
     /** Every voice: the shipped ones, then the release voices -- the library's table, in its order, each named by its
      * locale ("hu-HU-braillelite", "pt-BR-braillelite", "ar-braillelite") and listed by its language in English

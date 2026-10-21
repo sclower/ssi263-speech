@@ -5,7 +5,7 @@ loads `ssi263speech.dll` (the native voices, `src/csrc/voices.h`) from its own f
 `{app}\firmware`.
 
 The voices, one SAPI token each (en-US unless said), when their firmware is in the folder the build is given (a voice
-whose files are not there is simply not staged): the Braille Lite 2000 (June 2003) and the Braille Lite 2000 (español,
+whose files are not there is simply not staged): the Braille Lite 2000 (June 2003) and the Braille Lite 2000 (Spanish,
 es-ES), the Speak-Out, the Accent-mini, the Accent SA, and the Mockingboard in its two versions (Sweet Micro Systems;
 new in 0.8: Sweet Micro's own text-to-speech on a 6502 -- "Mockingboard", 1.1 from the Developers Toolkit,
 `mockingboard-tts-1.1.bin`, and "Mockingboard, early", Mockingboard disk 1's, `mockingboard-tts-early.bin`, each staged

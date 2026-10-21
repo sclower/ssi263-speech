@@ -534,8 +534,8 @@ check "package" sh tools/package_linux.sh "$DATA"
 check "uniform: every voice on Linux and Android" python3 tools/check_uniform.py --require linux,android \
     --sd-binary build/linux/sd_ssi263
 control "uniform CONTROL (Linux lacks the Spanish Braille Lite, must fail)" \
-    "^Braille Lite 2000 \(espa.ol\) +skip +skip +NO +yes +$" \
-    "^MISSING  Braille Lite 2000 \(espa.ol\) \[blazie:blazie_es\] on Linux$" \
+    "^Braille Lite 2000 \(Spanish\) +skip +skip +NO +yes +$" \
+    "^MISSING  Braille Lite 2000 \(Spanish\) \[blazie:blazie_es\] on Linux$" \
     "^gap +Linux: [0-9]+ of [0-9]+ voices, from build/linux/sd_ssi263 --voices" "^ok +Android: " "^uniform: 1 gap$" \
     -- env SSI263_UNIFORM_DROP=linux:blazie:blazie_es python3 tools/check_uniform.py --require linux,android \
     --sd-binary build/linux/sd_ssi263

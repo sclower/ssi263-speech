@@ -518,6 +518,16 @@ def drop(found):
                                                                    else vid, LABEL[plat]))
 
 
+# Ports not done yet, each with why: printed "later" and listed, not counted as gaps -- except with --release, which
+# counts them, so no release ships with one.  Remove an entry when its port lands; an entry for a voice the platform
+# now offers is itself reported, so none outlives its port.
+PENDING = {
+    ("smartalk:smartalk", "sapi"): "the SmarTalk (PR 24) is NVDA's only, until it is ported",
+    ("smartalk:smartalk", "linux"): "the SmarTalk (PR 24) is NVDA's only, until it is ported",
+    ("smartalk:smartalk", "android"): "the SmarTalk (PR 24) is NVDA's only, until it is ported",
+}
+
+
 def main():
     try:                                # the voices' names are UTF-8 ("español") whatever the console is
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -528,6 +538,7 @@ def main():
     ap.add_argument("--sd-binary", help="the built speech-dispatcher module (default build/linux/sd_ssi263, on Linux)")
     ap.add_argument("--linux-conf", help="the packaged ssi263.conf (default: the built package's, else package_linux.sh's)")
     ap.add_argument("--sapi-stage", help="the SAPI stage (default nvda/dist/sapi-<version>-final, else sapi-dev)")
+    ap.add_argument("--release", action="store_true", help="count the pending ports (PENDING) as gaps: for a release")
     a = ap.parse_args()
     require = {r.strip() for r in a.require.split(",") if r.strip()}
     if require - set(PLATFORMS):
@@ -541,7 +552,7 @@ def main():
     drop(found)
 
     canon = {v["id"] for v in voices}
-    gaps, lines = [], []
+    gaps, lines, later = [], [], []
     rows = [(v["name"], v["id"], None) for v in voices]
     rows += [("  %s: %s" % (FEATURE_LABEL[f], v["name"]), v["id"], f) for f in FEATURES for v in voices
              if applies(f, v)]
@@ -554,10 +565,15 @@ def main():
             p = found[k]
             if p.skip:
                 cells.append("skip")
+            elif feat is None and vid not in p.voices and (vid, k) in PENDING and not a.release:
+                cells.append("later")
+                later.append("PENDING  %s [%s] on %s: %s" % (label, vid, LABEL[k], PENDING[(vid, k)]))
             elif feat is None:
                 cells.append("yes" if vid in p.voices else "NO")
                 if vid not in p.voices:
                     gaps.append((k, "MISSING  %s [%s] on %s" % (label, vid, LABEL[k])))
+                elif (vid, k) in PENDING:
+                    gaps.append((k, "DONE  %s [%s] on %s: take it out of PENDING" % (label, vid, LABEL[k])))
             elif vid not in p.voices:
                 cells.append("-")                    # the voice itself is the gap
             else:
@@ -581,14 +597,15 @@ def main():
             gaps.append((k, "FAIL  %s: %s" % (LABEL[k], e)))
         lines.append("%s %s: %d of %d voices, from %s" % ("gap " if any(g[0] == k for g in gaps) else "ok  ",
                                                           LABEL[k], len(set(p.voices) & canon), len(canon), p.source))
-    for ln in lines + [g[1] for g in gaps]:
+    for ln in lines + later + [g[1] for g in gaps]:
         print(ln)
     if gaps:
         print("uniform: %d gap%s" % (len(gaps), "" if len(gaps) == 1 else "s"))
         return 1
     checked = [k for k in PLATFORMS if not found[k].skip]
-    print("uniform: every voice on %s, with the Braille Lite's run ahead and number words" %
-          ", ".join(LABEL[k] for k in checked))
+    print("uniform: every voice on %s, with the Braille Lite's run ahead and number words%s" % (
+          ", ".join(LABEL[k] for k in checked), "; %d port%s pending (not for a release)" % (
+              len(later), "" if len(later) == 1 else "s") if later else ""))
     return 0
 
 

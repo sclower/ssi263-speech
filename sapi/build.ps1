@@ -78,6 +78,10 @@ $fwSrc = Join-Path $repo "firmware"
 $fw = Join-Path $Stage "firmware"
 $files = @(& $serve --files --firmware $fwSrc)
 if ($LASTEXITCODE -or $files.Count -eq 0) { throw "the native voices found no firmware in $fwSrc" }
+# Voices not ported to SAPI yet (tools/check_uniform.py PENDING): their firmware stays out of the stage, so the
+# library does not list them.  Remove an entry when its port lands.
+$pending = @("automated-functions-smartalk/")         # the SmarTalk (PR 24): NVDA's only, until ported
+$files = @($files | Where-Object { $rel = $_; -not ($pending | Where-Object { $rel.StartsWith($_) }) })
 foreach ($rel in $files) {
   $dst = Join-Path $fw $rel
   New-Item -ItemType Directory -Force (Split-Path -Parent $dst) | Out-Null

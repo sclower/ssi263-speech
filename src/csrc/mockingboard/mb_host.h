@@ -32,6 +32,9 @@
  *               and does not change.
  *   cancel      the firmware has none: the host moves its end pointer (1Ah) to the frame playing (ECh), so the
  *               driver's own end-of-text path stops it at the next A/R.
+ *   each text   finds the tract at rest (mb_voice.c rest): the last phoneme, of a cut text or one that ended,
+ *               no longer comes back with a pop when the 1.1 firmware powers the chip up again, nor rings on in the
+ *               early one's.
  *
  * Not thread-safe per instance; different instances may be used from different threads.  MIT.
  */

@@ -11,6 +11,7 @@
 #define STEP_S 0.0005
 #define WAIT_LIMIT 3.0                      /* chip seconds a cancelled part may take to stop before the next text */
 #define AMPLITUDE 11                        /* the toolkit demo's */
+#define REST_S 0.03                         /* before a text: the tract brought to rest on a PA, then the host run */
 #define FILTER 230
 
 struct mb_voice {
@@ -20,6 +21,7 @@ struct mb_voice {
     int offset;                             /* this utterance's capital pitch offset */
     char **parts;
     int n_parts, next, active, n_split;
+    int spoken;                             /* a text was said: the next one brings the tract to rest first (rest) */
     short *pcm;
     int pcm_cap;
 };
@@ -218,6 +220,30 @@ static void wait_idle(mb_voice *v)
     }
 }
 
+/* before each text: the tract brought to rest, as a fresh voice's is.  A HOST feature (mb_host.h).  The 1.1
+   firmware ends speech -- a text's natural end, and a cancel's cut mid-word -- by writing R0 = 00, then R3 = 80,
+   which powers the chip down with the last phoneme still at full amplitude; the next text's power-up brought it back
+   first, a pop and the old phoneme at the head of the new speech ("OK button" said twice: the second 107 ms longer,
+   sound from its first millisecond; after a cancel 300-1400 times a fresh start's energy before its onset).  The
+   early firmware never powers down: the last phoneme's tail was still ringing, or the next text came 80-90 ms late.
+   So: a PA loaded with the power on, the chip run REST_S silently, R3 put back as the firmware left it; then the host
+   run REST_S, its audio dropped.  Every text then starts as a fresh voice's first does.  MB_CANCEL_REST_BREAK=1, the
+   tests' control: none of it, as it was */
+static void rest(mb_voice *v)
+{
+    ssi263 *chip = mbh_chip(v->h);
+    const double *a;
+    int r3 = ssi263_reg(chip, 3);
+    if (getenv("MB_CANCEL_REST_BREAK"))
+        return;
+    ssi263_write(chip, 0, 0xC0);            /* mode 3, PA */
+    ssi263_write(chip, 3, r3 & 0x7F);       /* powered */
+    ssi263_write(chip, 0, 0xC0);            /* the PA loaded */
+    ssi263_skip(chip, REST_S);
+    ssi263_write(chip, 3, r3);              /* as the firmware left it */
+    mbh_run(v->h, REST_S, STEP_S, &a);
+}
+
 MB_API int mbv_speak(mb_voice *v, const char *utf8, int pitch_offset)
 {
     char **p = NULL;
@@ -236,6 +262,9 @@ MB_API int mbv_speak(mb_voice *v, const char *utf8, int pitch_offset)
     v->gain = v->volume / 100.0;
     v->active = 1;
     wait_idle(v);
+    if (v->spoken)                          /* a new voice's tract is at rest already */
+        rest(v);
+    v->spoken = 1;
     return 1;
 }
 

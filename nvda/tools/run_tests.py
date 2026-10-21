@@ -282,8 +282,8 @@ CHECKS.append(check("uniform CONTROL (Android lacks the Speak-Out, must fail)", 
                                 r"^uniform: 1 gap$"]))
 CHECKS.append(check("uniform CONTROL (Linux lacks the Spanish number words, must fail)", UNIFORM,
                     env={"SSI263_UNIFORM_DROP": "linux:blazie:blazie_es:numbers"}, expect_fail=True,
-                    fail_marks=[r"^  number words: Braille Lite 2000 \(espa.ol\) +yes +yes +NO +yes +$",
-                                r"^MISSING  number words for Braille Lite 2000 \(espa.ol\) \[blazie:blazie_es\] on "
+                    fail_marks=[r"^  number words: Braille Lite 2000 \(Spanish\) +yes +yes +NO +yes +$",
+                                r"^MISSING  number words for Braille Lite 2000 \(Spanish\) \[blazie:blazie_es\] on "
                                 r"Linux: dropped by SSI263_UNIFORM_DROP$", r"^uniform: 1 gap$"]))
 SAPI_SERVE_TEST = os.path.join(os.path.dirname(os.path.dirname(HERE)), "sapi", "test_serve.py")
 CHECKS.append(check("SAPI pipe server", [PY, SAPI_SERVE_TEST]))
@@ -1929,6 +1929,16 @@ for brk, marks in (
 # chip 1 % fast; and the voice (voices.c smartalk:smartalk, st_voice.h) through the table and the NVDA binding: each
 # setting on the chip, the settings kept across a cancel, a long text in parts, the text path -- its control pins the
 # tone, which only the tone check may then fail.  The software is a local copy (firmware/automated-functions-smartalk)
+# the Mockingboards after a cancel (Tomi: pops and a repeated piece at the head, quickly tabbing): the next text starts
+# as one said again after its end does, within 40 ms and like it; the control leaves the tract as the last text left
+# it (mb_voice.c rest)
+MB_CANCEL = [PY, os.path.join(os.path.dirname(os.path.dirname(HERE)), "tools", "check_mb_cancel.py")]
+CHECKS.append(check("Mockingboard: a start after a cancel as a fresh one's (both versions)", MB_CANCEL))
+CHECKS.append(check("Mockingboard after a cancel CONTROL (the tract left as cut, must fail)", MB_CANCEL,
+                    env={"MB_CANCEL_REST_BREAK": "1"}, expect_fail=True,
+                    fail_marks=[r"^FAIL  mockingboard-tts-1\.1\.bin cut at 0\.12 s: onset 1\.\d ms",
+                                r"^FAIL  mockingboard-tts-early\.bin cut at 0\.20 s: onset 0\.0 ms",
+                                r"^mb cancel: 8 FAILED$"]))
 ST_EXE = os.path.join(os.path.dirname(os.path.dirname(HERE)), "firmware", "automated-functions-smartalk", "S_TALK.EXE")
 if os.path.isfile(ST_EXE):
     ST_HOST = os.path.join(os.path.dirname(os.path.dirname(HERE)), "tools", "check_st_host.py")

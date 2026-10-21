@@ -22,10 +22,13 @@ from worker import Worker, WorkerError
 
 
 def run_tool(executable: Path, command: str, state: Path, image: Path, codepage: int, *,
-             dry_run: bool = False) -> subprocess.CompletedProcess:
+             dry_run: bool = False, lf: bool = False) -> subprocess.CompletedProcess:
+    """blazie_files COMMAND STATE IMAGE (or, for extract, a folder) in the unit's code page."""
     args = [str(executable), command, str(state), str(image.resolve()), "--codepage={value}".format(value=codepage)]
     if dry_run:
         args.append("--dry-run")
+    if lf:
+        args.append("--lf")
     return subprocess.run(args, capture_output=True, text=True, errors="replace", timeout=60)
 
 
@@ -106,9 +109,7 @@ def copy_files(worker: Worker, dialogs: ModuleType, profile: Profile, executable
     try:
         with dialogs.activity(_("Copying files"), stdscr=stdscr):
             worker.request("SAVE", "SAVED")  # its memory as it is this moment; a paused worker writes no more
-            result = subprocess.run([str(executable), "extract", str(worker.saved), str(target.resolve()), "--lf",
-                                     "--codepage={value}".format(value=profile.codepage)],
-                                    capture_output=True, text=True, errors="replace", timeout=60)
+            result = run_tool(executable, "extract", worker.saved, target, profile.codepage, lf=True)
         found = re.search(r"extracted (\d+) of (\d+) files", result.stdout)
         if result.returncode:
             problems = [line for line in result.stdout.splitlines() if line.startswith(("could not", "cannot"))]

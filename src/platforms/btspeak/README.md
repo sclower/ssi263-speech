@@ -313,8 +313,9 @@ start it again. The other units' memories are not touched.
 
 ## Serial port
 
-**Serial port** plugs the unit's serial port into a serial device on the BT Speak (the menu lists the
-`/dev/ttyUSB*`, `/dev/ttyACM*`, `/dev/ttyS*` and `/dev/ttyAMA*` present; the user needs the `dialout` group), into a
+**Serial port** plugs the unit's serial port into a USB serial adapter on the BT Speak (the menu lists the
+`/dev/ttyUSB*` and `/dev/ttyACM*` present -- not the board's own UARTs, `ttyS*` and `ttyAMA*`, which are the device's;
+the user needs the `dialout` group), into a
 pseudo-terminal for a program on the device, or into nothing (the default). It is `blazie_emu`'s serial port
 (`src/apps/blazie/serial_linux.c`, README-linux.md "The serial port"): the line follows what the firmware programs
 -- rate, data bits, parity, DTR, RTS -- and its XON and XOFF pass through as bytes. A terminal program (`picocom`,
@@ -324,7 +325,8 @@ A pseudo-terminal's other end is named when it is chosen, and linked as `serial`
 one each time a unit starts (a restart, a firmware switch, a sample-rate change keep the port, but a pseudo-terminal
 program must open the link again after a restart or switch). The choice is kept in `preferences.json` and used
 whenever a unit starts; a device missing then leaves the unit unplugged, says so once, and keeps the setting for next
-time. One that will not open from the menu is said and the choice set back to Not connected.
+time; choosing Not connected then forgets it. One that will not open from the menu is said and the choice set back to
+Not connected.
 
 ## Memory and cleanup
 

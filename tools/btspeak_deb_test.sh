@@ -92,6 +92,17 @@ NO_NETWORK=1 "$T/ctl/postinst" configure >/dev/null
 r=$?; [ $r = 0 ] && [ ! -e "$FW" ] && [ "$(grep -c "$R " "$T/h/a/BTSpeak/user.menu")" = 1 ] \
     && grep -q -x "Braille Lite 2000 (English): $R bl-en" "$T/h/a/BTSpeak/user.menu"
 check "offline: installed all the same, the Braille Lite in the menu (its entry fetches), no half-fetched firmware" $?
+# offline again, after the launcher fetched the firmware into a user's own folder and listed its units there: kept
+printf "Type 'n Speak (English): %s tns-en\n" "$R" >> "$T/h/a/BTSpeak/user.menu"
+NO_NETWORK=1 "$T/ctl/postinst" configure >/dev/null
+grep -q -x "Type 'n Speak (English): $R tns-en" "$T/h/a/BTSpeak/user.menu" \
+    && [ "$(grep -c "$R bl-en" "$T/h/a/BTSpeak/user.menu")" = 1 ]
+check "offline reconfigure: the units a user's own fetch listed stay" $?
+cp "$T/h/a/BTSpeak/user.menu" "$T/before-empty"
+printf '' | "$T/root/usr/lib/blazie-emu-btspeak/user-menu-units" "$T/h/a/BTSpeak/user.menu" "$R" 2>/dev/null \
+    && empty_ok=0 || empty_ok=1
+[ "$empty_ok" = 1 ] && cmp -s "$T/before-empty" "$T/h/a/BTSpeak/user.menu"
+check "no units listed (blazie_emu failed): refused, the menu as it was" $?
 "$T/ctl/prerm" remove; "$T/ctl/postrm" remove
 
 NO_PINNED=1 "$T/ctl/postinst" configure >/dev/null

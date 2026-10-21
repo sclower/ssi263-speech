@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from preferences import Preferences
-from serial_port import SerialPort, serial_menu
+from serial_port import SerialPort, ports, serial_menu
 
 
 class SerialPortTests(unittest.TestCase):
@@ -53,6 +53,22 @@ class SerialPortTests(unittest.TestCase):
             serial_menu(self.worker(("SERIAL_FAILED", "Permission denied")), self.dialogs, self.preferences, self.serial)
         self.assertIn("Permission denied", self.dialogs.show_message.call_args.args[0])
         self.assertEqual(Preferences.load(self.preferences.path).serial, "none")
+
+    def test_not_connected_forgets_a_saved_port_that_would_not_open(self):
+        self.preferences.store(False, serial="/dev/ttyUSB0")     # saved; not there at start, so the unit is unplugged
+        self.dialogs.request_choice.return_value = SimpleNamespace(key="none")
+        worker = self.worker(("SERIAL", "none"))
+        serial_menu(worker, self.dialogs, self.preferences, self.serial)
+        self.assertEqual(Preferences.load(self.preferences.path).serial, "none")
+        self.preferences.store(False, serial="none")
+        worker = self.worker()
+        serial_menu(worker, self.dialogs, self.preferences, self.serial)  # already so: nothing sent
+        worker.answer.assert_not_called()
+
+    def test_only_usb_adapters_are_offered_never_the_boards_own_uarts(self):
+        present = {"/dev/ttyUSB0", "/dev/ttyACM1", "/dev/ttyS0", "/dev/ttyAMA10", "/dev/ttyAMA0"}
+        with patch("serial_port.os.path.exists", side_effect=present.__contains__):
+            self.assertEqual(ports(), ["/dev/ttyUSB0", "/dev/ttyACM1"])
 
     def test_cancelling_changes_nothing(self):
         self.dialogs.request_choice.return_value = None

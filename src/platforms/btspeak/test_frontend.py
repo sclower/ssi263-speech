@@ -203,6 +203,16 @@ class FrontendTests(unittest.TestCase):
                          ["BARS " + str(n) for n in (2, 0, 1, 0, 2, 3, 2, 0)])
         self.assertFalse(any(c.startswith("KEY") and c.split()[-1] != "0" for c in commands))
         self.assertIn("R3 advances braille; L3 moves it back", help_shown.call_args.args[0])
+        # a key the keyboard does not report is not named: the older keypad's bridge has no L1
+        table.write_text("bind L1 FWINRT\nbind R2 FWINLT\n")
+        legacy = ModuleType("legacy_keyboard")
+        legacy.BTB_L2, legacy.BTB_L3, legacy.BTB_R2, legacy.BTB_R3 = 257, 258, 260, 261
+        with patch("panning.TABLES", (table,)):
+            host_menu(Mock(), SimpleNamespace(request_choice=Mock(side_effect=[SimpleNamespace(key="h"), None]),
+                                              show_message=help_shown), SimpleNamespace(quick_keys=False, double_speed=False),
+                      kb_client=legacy)
+        self.assertIn("R2 moves braille back", help_shown.call_args.args[0])
+        self.assertNotIn("L1", help_shown.call_args.args[0])
 
     def test_menu_is_in_groups_unit_files_restarts_settings_then_help_and_exit(self):
         with tempfile.TemporaryDirectory() as tmp:

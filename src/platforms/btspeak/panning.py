@@ -42,9 +42,14 @@ def panning_keys(tables: tuple[Path, ...] | None = None) -> dict[str, int]:
     return dict(DEFAULT)
 
 
+def usable(kb_client: ModuleType, keys: dict[str, int]) -> dict[str, int]:
+    """Those of the keys this keyboard reports: the older keypad's bridge (legacy_keyboard.py) has L2, L3, R2, R3 only."""
+    return {name: bar for name, bar in keys.items() if hasattr(kb_client, "BTB_" + name)}
+
+
 def bar_codes(kb_client: ModuleType, keys: dict[str, int]) -> dict[int, int]:
     """The keyboard server's codes for those keys (kb_client.BTB_R3, ...), each with its bar."""
-    return {getattr(kb_client, "BTB_" + name): bar for name, bar in keys.items() if hasattr(kb_client, "BTB_" + name)}
+    return {getattr(kb_client, "BTB_" + name): bar for name, bar in usable(kb_client, keys).items()}
 
 
 def describe(keys: dict[str, int]) -> str:

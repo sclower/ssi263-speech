@@ -1,17 +1,25 @@
 #!/bin/sh
-# user-menu-units MENU RUN < UNITS -- a BT Speak User Menu (MENU: ~/BTSpeak/user.menu) made to list the units that
-# can start, and no others: UNITS is what `blazie_emu --list-units` prints ("id<TAB>name" a line), and each unit's
-# line is "name: RUN id".  A unit listed already keeps its line, whatever its label (the user may have renamed it);
+# user-menu-units [--keep] MENU RUN < UNITS -- a BT Speak User Menu (MENU: ~/BTSpeak/user.menu) made to list the
+# units that can start, and no others: UNITS is what `blazie_emu --list-units` prints ("id<TAB>name" a line), and each
+# unit's line is "name: RUN id".  A unit listed already keeps its line, whatever its label (the user may have renamed it);
 # a line of ours (": RUN id") whose unit is not in UNITS goes; every other line stays exactly as it was.  Under the
 # lock the BT Speak's own User Menu code takes (BTSpeak/user_menu.py: flock on the file), written in place, so the
 # file keeps its owner and mode; a missing or empty menu gets the title first, as user_menu.py writes it.
+# --keep: units added, none removed (UNITS is not all there is: the .deb offline, before its firmware is fetched).
+# No units at all is a failure upstream (blazie_emu could not list them), never "remove every line": nothing changes.
 # install.sh and the .deb's postinst and launcher use it.
 set -e
+KEEP=0
+[ "$1" = --keep ] && { KEEP=1; shift; }
 MENU="$1"
 RUN="$2"
-[ -n "$MENU" ] && [ -n "$RUN" ] || { echo "user-menu-units MENU RUN < UNITS"; exit 2; }
+[ -n "$MENU" ] && [ -n "$RUN" ] || { echo "user-menu-units [--keep] MENU RUN < UNITS"; exit 2; }
 UNITS="$(cat)"
-export UNITS RUN
+case "$UNITS" in
+    *"$(printf '\t')"*) ;;
+    *) echo "user menu: no units listed, so left as it is" >&2; exit 1 ;;
+esac
+export UNITS RUN KEEP
 (
     flock -x 9
     kept="$(mktemp)"
@@ -34,7 +42,7 @@ export UNITS RUN
             at = index($0, ours)
             id = at ? substr($0, at + length(ours)) : ""
             if (id != "" && id !~ /[ \t]/) {               # a line of ours, for unit id
-                if (!(id in name)) {
+                if (!(id in name) && ENVIRON["KEEP"] != "1") {
                     print "user menu: removed " substr($0, 1, at - 1) " (its firmware is not there)" > "/dev/stderr"
                     next
                 }

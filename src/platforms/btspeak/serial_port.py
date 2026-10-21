@@ -15,11 +15,13 @@ from types import ModuleType
 from preferences import Preferences
 from worker import Worker
 
-PATTERNS = ("/dev/ttyUSB{n}", "/dev/ttyACM{n}", "/dev/ttyS{n}", "/dev/ttyAMA{n}")
+# USB serial adapters only. blazie_emu's menu lists the board's own UARTs too (ttyS, ttyAMA), but on a BT Speak or BT
+# Braille those are the device's -- a Pi's console or a link the system uses -- and opening one puts it in raw mode.
+PATTERNS = ("/dev/ttyUSB{n}", "/dev/ttyACM{n}")
 
 
 def ports() -> list[str]:
-    """The serial devices present, as blazie_emu's menu lists them."""
+    """The USB serial adapters present."""
     return [pattern.format(n=n) for pattern in PATTERNS for n in range(8) if os.path.exists(pattern.format(n=n))]
 
 
@@ -59,8 +61,10 @@ def serial_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences, s
     choices.update({path: path for path in ports()})
     current = serial.port if serial.port in choices else "none"
     selected = dialogs.request_choice(choices, prompt=_("Serial port"), default=current, stdscr=stdscr)
-    if selected is None or (selected.key == serial.port and selected.key != "pty"):
+    if selected is None:
         return
+    if selected.key == serial.port == preferences.serial and selected.key != "pty":
+        return  # as it is; but Not connected also forgets a saved port that would not open
     error = serial.plug(worker, selected.key)
     preferences.store(preferences.quick_keys, serial=serial.port)
     if error:

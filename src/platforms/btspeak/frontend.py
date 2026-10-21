@@ -19,7 +19,7 @@ from preferences import Preferences
 from profiles import Profile, discover
 from file_import import import_files
 from disk_image import copy_files, export_image, import_image
-from panning import bar_codes, describe as describe_panning, panning_keys
+from panning import bar_codes, describe as describe_panning, panning_keys, usable
 from serial_port import SerialPort, serial_menu
 from worker import Worker, WorkerError
 from tns_keyboard import key_name as tns_key_name
@@ -89,7 +89,7 @@ def capture(worker: Worker, kb_client: ModuleType, display: BrailleOutput | None
 def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
               units: dict[str, str] | None = None, *, stdscr: curses.window | None = None,
               profile: Profile | None = None, files_tool: Path | None = None,
-              serial: SerialPort | None = None) -> str:
+              serial: SerialPort | None = None, kb_client: ModuleType | None = None) -> str:
     """The worker is paused and the keyboard is back with BRLTTY."""
     selected_key = "r"
     kind = profile.kind if profile else "bl"
@@ -215,7 +215,8 @@ def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
                     "M-chord with Dot 7 opens this menu; Z-chord with Dot 7 saves and closes the terminal."
                 ), stdscr=stdscr)
                 continue
-            display_help = (describe_panning(panning_keys()) + _("Routing keys are unused.\n")
+            panning = panning_keys() if kb_client is None else usable(kb_client, panning_keys())
+            display_help = (describe_panning(panning) + _("Routing keys are unused.\n")
                             if kind == "bl" else
                             _("Braille 'n Speak has no braille display or advance bars.\n"))
             dialogs.show_message(_(
@@ -239,10 +240,11 @@ def host_menu(worker: Worker, dialogs: ModuleType, preferences: Preferences,
 
 def menu_session(worker: Worker, dialogs: ModuleType, preferences: Preferences, units: dict[str, str], *,
                  profile: Profile | None = None, files_tool: Path | None = None,
-                 serial: SerialPort | None = None) -> str:
+                 serial: SerialPort | None = None, kb_client: ModuleType | None = None) -> str:
     """Keep one terminal screen across host menus; return it before capturing firmware keys."""
     if not getattr(dialogs, "shared_screen", True):
-        return host_menu(worker, dialogs, preferences, units, profile=profile, files_tool=files_tool, serial=serial)
+        return host_menu(worker, dialogs, preferences, units, profile=profile, files_tool=files_tool, serial=serial,
+                         kb_client=kb_client)
     result = "resume"
     error: Exception | None = None
 
@@ -250,7 +252,7 @@ def menu_session(worker: Worker, dialogs: ModuleType, preferences: Preferences, 
         nonlocal result, error
         try:
             result = host_menu(worker, dialogs, preferences, units, stdscr=window, profile=profile, files_tool=files_tool,
-                               serial=serial)
+                               serial=serial, kb_client=kb_client)
         except Exception as exc:
             # The platform wrapper reports and swallows exceptions. Let main report worker/save
             # failures after the wrapper has restored the terminal instead.
@@ -386,7 +388,8 @@ def main() -> int:
                 exit_to_editor = True
                 break
             action = menu_session(worker, dialogs, preferences, units, profile=profiles[preferences.unit],
-                                  files_tool=args.backend.resolve().with_name("blazie_files"), serial=serial)
+                                  files_tool=args.backend.resolve().with_name("blazie_files"), serial=serial,
+                                  kb_client=kb_client)
             if action == "resume":
                 say(host, _("Menu closed"))
             if action == "quit":

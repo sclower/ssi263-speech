@@ -14,8 +14,8 @@
  *   blazie_files extract STATE DIR [--crlf|--lf]   every file into DIR/<folder>/<name>; --crlf: text files with CR LF
  *                                               line ends, for a PC editor; --lf: with LF, for Linux (a BT Speak's);
  *                                               a file with a NUL byte is binary (a compiled BASIC program) and kept as
- *                                               it is either way, as add and import keep it
- *                                               line ends, for a PC editor (the image keeps the unit's CR)
+ *                                               it is either way, as add and import keep it; the image keeps the
+ *                                               unit's CR
  *   blazie_files check STATE                    the file system's rules, checked
  *   --codepage=852 (anywhere)                   the unit's names in code page 852: the Slovak Braille 'n Speak
  *                                               2000's (its "fles subory" folder); 850 otherwise (bl_files_xfer.h)

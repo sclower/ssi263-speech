@@ -6,8 +6,8 @@ sat inside a whole family of them.
 
 The Silicon Systems **SSI-263** (Votrax sold it as the SC-02, Aicom called it the AI901)
 was the voice of a lot of blind people's computers in the late 80s and 90s. This project
-is a register-level emulation of that chip, and around it, the original firmware of four
-talking devices, running unchanged and driving the emulated chip:
+is a register-level emulation of that chip, and around it, the original firmware of the
+talking devices that drove it, running unchanged and driving the emulated chip, among them:
 
 | Voice | Its own software | Runs in |
 |---|---|---|
@@ -15,6 +15,7 @@ talking devices, running unchanged and driving the emulated chip:
 | **Blazie Braille Lite 2000** in speech-box mode | the June 2003 firmware | MAME's Z180 |
 | **Aicom Accent-mini** | Aicom's DOS device driver `SPKEMS.DVC` (Accent-EMS V4.5) | MAME's 8086, with emulated expanded memory |
 | **Aicom Accent SA** | the box's own 8085 firmware and dictionary ROMs (1986–1989) | MAME's 8085 |
+| **Automated Functions SmarTalk** (1995), a small box on the parallel port | its DOS text-to-speech program `S_TALK.EXE` (version 1.21) | MAME's 8086 |
 
 The pronunciation rules, the number reading, the intonation and the timing are all the
 devices' own. The chip model makes every sample: nothing is recorded or concatenated.
@@ -72,6 +73,15 @@ from. The Speak-Out and Braille Lite firmware stay out of git: to build those tw
 yourself, put your own copies in `firmware/gw-micro-speakout/` and `firmware/blazie/`.
 The README in each folder says which files, with their checksums.
 
+The SmarTalk's software is the one other program in the tree. Automated Functions gave
+it away themselves: the README on their own SmarTalk 1.21 disk says, "Please feel free to
+share the new version of the SmarTalk software with anyone who needs it." So `S_TALK.EXE`
+is here exactly as it is on that disk, never patched, under Automated Functions' own
+copyright (1995, all rights reserved), not our MIT licence.
+[`firmware/automated-functions-smartalk/README.txt`](firmware/automated-functions-smartalk/README.txt)
+has its notice and checksum. The phone apps don't carry it: like every other
+device's software, you import it there yourself.
+
 ## Documentation
 
 - [How the SSI-263 learned to speak again](docs/history.md): the whole story, day by day,
@@ -101,7 +111,7 @@ The README in each folder says which files, with their checksums.
 | `docs/` | The documentation (see above) |
 | `tools/` | Research and check tools: comparisons against the recordings, the C/Python gate, renders |
 | `nvda/` | The three NVDA drivers, their builds, and the driver test rig |
-| `firmware/` | Aicom's software, and the places the other firmware goes |
+| `firmware/` | Aicom's software, the SmarTalk's, and the places the other firmware goes |
 | `third_party/casso/` | From Rob Elmer's Casso (MIT): the ROM extraction the die reading was checked against |
 
 ## Building
@@ -153,7 +163,8 @@ they are not runtime payloads and no environment switch is needed for MAME.
   outside the 0.7 release payloads.
 - **The Accent SA ROMs** were shared by spacepup.
 - **The firmware belongs to its makers:** the Speak-Out to GW Micro (hardware by Daniel
-  Weirich, software by Douglas Geoffray), the Accent to Aicom Corporation. The Braille
+  Weirich, software by Douglas Geoffray), the Accent to Aicom Corporation, the SmarTalk
+  to Automated Functions, Inc., who invited everyone to share its software. The Braille
   Lite's firmware is shared with permission.
 - The whole story, day by day and with who found what, is in [docs/history.md](docs/history.md).
 - Thanks, Derek, for your contributions.

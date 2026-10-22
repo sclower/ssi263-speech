@@ -272,7 +272,7 @@ otwarta"; its keys answer in ~380 ms of chip time, its rules slower, as the Slov
 its documents live in its battery RAM (183 pages free from new, as the 2000s say before their "2045 K flash"), so
 the flash half of the file tools does not apply to it.  Its clock starts from this PC's, is set with its own
 commands, and is kept in the saved state with the time the unit was off; it says the year as it is (2027 as twenty
-twenty-seven: its firmware's own century, up to 2099), so the Braille Lite's 28-year mapping (below) is not its.
+twenty-seven: its firmware's own century; its date command takes years up to 2089), so the Braille Lite's 28-year mapping (below) is not its.
 The download carries all three in `firmware\bns640\` (0.8.5: `BSPENG.BNS`, `BSPENG_2000.BNS`, `BSPPLA.BNS`, one
 folder down where the emulator finds them); each sets itself up on its first start, as the other languages do. They
 are in the emulator's downloads only, never in the phone apps.

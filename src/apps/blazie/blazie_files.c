@@ -11,8 +11,11 @@
  *   blazie_files add STATE FILE... [--replace] [--dry-run]   the files added to the flash startup folder, one batch,
  *                                               all or nothing (the menu's "Load programs into flash"); a name the
  *                                               unit has already: nothing done unless --replace
- *   blazie_files extract STATE DIR [--crlf]     every file into DIR/<folder>/<name>; --crlf: text files with CR LF
- *                                               line ends, for a PC editor (the image keeps the unit's CR)
+ *   blazie_files extract STATE DIR [--crlf|--lf]   every file into DIR/<folder>/<name>; --crlf: text files with CR LF
+ *                                               line ends, for a PC editor; --lf: with LF, for Linux (a BT Speak's);
+ *                                               a file with a NUL byte is binary (a compiled BASIC program) and kept as
+ *                                               it is either way, as add and import keep it; the image keeps the
+ *                                               unit's CR
  *   blazie_files check STATE                    the file system's rules, checked
  *   --codepage=852 (anywhere)                   the unit's names in code page 852: the Slovak Braille 'n Speak
  *                                               2000's (its "fles subory" folder); 850 otherwise (bl_files_xfer.h)
@@ -193,7 +196,7 @@ static int usage(void)
            "       blazie_files export STATE IMAGE.img\n"
            "       blazie_files import STATE IMAGE.img [--dry-run] [--keep-exact]\n"
            "       blazie_files add STATE FILE... [--replace] [--dry-run]\n"
-           "       blazie_files extract STATE DIR [--crlf]\n"
+           "       blazie_files extract STATE DIR [--crlf|--lf]\n"
            "       blazie_files unpack IMAGE.img DIR\n"
            "       blazie_files pack DIR IMAGE.img\n"
            "       --codepage=852: the unit's names in code page 852 (the Slovak Braille 'n Speak 2000)\n");
@@ -346,7 +349,9 @@ static int list(const blf_fs *fs, int model)
     return 0;
 }
 
-static int extract(const blf_fs *fs, const char *dir, int crlf)
+enum { LINES_UNIT, LINES_CRLF, LINES_LF };   /* extract's line ends: the unit's lone CR, a PC's, Linux's */
+
+static int extract(const blf_fs *fs, const char *dir, int lines)
 {
     int i, n = 0;
     char path[1200], u8[200], f8[200];
@@ -360,11 +365,15 @@ static int extract(const blf_fs *fs, const char *dir, int crlf)
         unsigned long len, k, o = 0;
         const unsigned char *d = blf_data(fs, i, &len);
         unsigned char *out = (unsigned char *)malloc(len * 2 + 1);
+        int text = (x->type == 'A' || x->type == 'B') && !(len && memchr(d, 0, len));
         if (!out) return 1;
         for (k = 0; k < len; k++) {
-            if (crlf && (x->type == 'A' || x->type == 'B') && d[k] == '\r') {
-                out[o++] = '\r';
+            if (text && lines != LINES_UNIT && d[k] == '\r') {
+                if (lines == LINES_CRLF)
+                    out[o++] = '\r';
                 out[o++] = '\n';
+                if (k + 1 < len && d[k + 1] == '\n')
+                    k++;                            /* a CR LF already: one line end */
             } else
                 out[o++] = d[k];
         }
@@ -573,8 +582,16 @@ int main(int argc, char **argv)
         blx_report_free(&r);
     } else if (!strcmp(argv[1], "add") && argc >= 4)
         rc = add(fs, argv[2], &u, argc - 3, argv + 3);
-    else if (!strcmp(argv[1], "extract") && argc >= 4)
-        rc = extract(fs, argv[3], argc >= 5 && !strcmp(argv[4], "--crlf"));
+    else if (!strcmp(argv[1], "extract") && argc >= 4 && argc <= 5) {
+        if (argc == 4)
+            rc = extract(fs, argv[3], LINES_UNIT);
+        else if (!strcmp(argv[4], "--crlf"))
+            rc = extract(fs, argv[3], LINES_CRLF);
+        else if (!strcmp(argv[4], "--lf"))
+            rc = extract(fs, argv[3], LINES_LF);
+        else
+            rc = usage();
+    }
     else
         rc = usage();
     blf_close(fs);

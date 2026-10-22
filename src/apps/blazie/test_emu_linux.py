@@ -280,6 +280,28 @@ def main():
         def want(name):
             return only is None or name in only
 
+        if want("list-units"):
+            # what the BT Speak's Blazie menu lists: the folder a unit would start from -- the settings' firmware_dir
+            # (read, never written) -- each line id, name, catalog or release; with no settings, the folder beside
+            cfg = os.path.join(tmp, "list-config")
+            os.makedirs(cfg)
+            ini = os.path.join(cfg, "blazie_emu.ini")
+            with open(ini, "w") as f:
+                f.write("[unit]\nfirmware_dir = %s\n" % os.path.abspath(fw))
+            before = os.path.getmtime(ini)
+            rows = [line.split("\t") for line in run(exe, ["--list-units", "--config", cfg]).splitlines()]
+            empty = os.path.join(tmp, "list-empty")
+            os.makedirs(empty)
+            beside = run(exe, ["--list-units", "--config", empty]).splitlines()
+            check("list-units: the settings' firmware",
+                  ["bl-en", "Braille Lite 2000 (English)", "catalog"] in rows and all(len(r) == 3 for r in rows)
+                  and all(r[2] in ("catalog", "release") for r in rows) and os.path.getmtime(ini) == before
+                  and os.listdir(empty) == [],
+                  "%d units from firmware_dir, three columns each; no settings made or changed" % len(rows))
+            check("list-units: no settings, the folder beside (the control)", not any(l.startswith("bl-en\t") for l in beside)
+                  or os.path.isfile(os.path.join(os.path.dirname(os.path.abspath(exe)), "../../firmware/blazie/BL2ENG.BNS")),
+                  "%d units beside the program" % len(beside))
+
         if want("boot"):
             a = run(exe, base + ["--unit", "bl-en", "--seconds", "10", "--rms", "0:6", "--rms", "8.2:10"],
                     ["8.0 type f"], tmp)

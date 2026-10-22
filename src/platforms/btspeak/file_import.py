@@ -3,6 +3,8 @@
 import curses
 import shutil
 import subprocess
+from collections.abc import Iterator
+from contextlib import ExitStack, contextmanager
 from gettext import gettext as _
 from pathlib import Path
 from types import ModuleType
@@ -49,6 +51,25 @@ def select_files(dialogs: ModuleType, *, stdscr: curses.window | None = None) ->
             browse = not selected
 
 
+@contextmanager
+def staged(worker: Worker) -> Iterator[Path]:
+    """A copy of the paused unit's memory, and its updated firmware bank, for blazie_files to edit while the worker
+    keeps its lock; IMPORT_COMMIT adopts it. Removed afterwards, whether it was adopted or not."""
+    stage = Path(str(worker.saved) + ".import")
+    try:
+        worker.request("IMPORT_CHECK", "SAVED")
+        shutil.copyfile(worker.saved, stage)
+        program = Path(str(worker.saved) + ".program")
+        staged_program = Path(str(stage) + ".program")
+        staged_program.unlink(missing_ok=True)
+        if program.exists():
+            shutil.copyfile(program, staged_program)
+        yield stage
+    finally:
+        for suffix in ("", ".program", ".before-import", ".tmp"):
+            Path(str(stage) + suffix).unlink(missing_ok=True)
+
+
 def run_tool(executable: Path, stage: Path, paths: list[Path], codepage: int, *,
              dry_run: bool = False, replace: bool = False) -> subprocess.CompletedProcess:
     args = [str(executable), "add", str(stage), "--codepage={value}".format(value=codepage)]
@@ -73,35 +94,26 @@ def import_files(worker: Worker, dialogs: ModuleType, profile: Profile, executab
     paths = select_files(dialogs, stdscr=stdscr)
     if not paths:
         return
-    stage = Path(str(worker.saved) + ".import")
     try:
-        with dialogs.activity(_("Checking the selected files"), stdscr=stdscr):
-            worker.request("IMPORT_CHECK", "SAVED")
-            shutil.copyfile(worker.saved, stage)
-            program = Path(str(worker.saved) + ".program")
-            staged_program = Path(str(stage) + ".program")
-            staged_program.unlink(missing_ok=True)
-            if program.exists():
-                shutil.copyfile(program, staged_program)
-            result = run_tool(executable, stage, paths, profile.codepage, dry_run=True)
-        replace = False
-        if result.returncode:
-            existing = [line[7:] for line in result.stdout.splitlines() if line.startswith("exists ")]
-            if not existing:
-                raise WorkerError(result.stdout.strip() or result.stderr.strip() or _("The files could not be imported."))
-            replace = dialogs.request_confirmation(_("Replace existing files: {names}").format(names=", ".join(existing)),
-                                                   default=False, stdscr=stdscr)
-            if not replace:
-                return
-        with dialogs.activity(_("Importing files"), stdscr=stdscr):
-            result = run_tool(executable, stage, paths, profile.codepage, replace=replace)
+        with ExitStack() as stack:
+            with dialogs.activity(_("Checking the selected files"), stdscr=stdscr):
+                stage = stack.enter_context(staged(worker))
+                result = run_tool(executable, stage, paths, profile.codepage, dry_run=True)
+            replace = False
             if result.returncode:
-                raise WorkerError(result.stdout.strip() or result.stderr.strip() or _("The files could not be imported."))
-            worker.request("IMPORT_COMMIT", "IMPORTED")
+                existing = [line[7:] for line in result.stdout.splitlines() if line.startswith("exists ")]
+                if not existing:
+                    raise WorkerError(result.stdout.strip() or result.stderr.strip() or _("The files could not be imported."))
+                replace = dialogs.request_confirmation(_("Replace existing files: {names}").format(names=", ".join(existing)),
+                                                       default=False, stdscr=stdscr)
+                if not replace:
+                    return
+            with dialogs.activity(_("Importing files"), stdscr=stdscr):
+                result = run_tool(executable, stage, paths, profile.codepage, replace=replace)
+                if result.returncode:
+                    raise WorkerError(result.stdout.strip() or result.stderr.strip() or _("The files could not be imported."))
+                worker.request("IMPORT_COMMIT", "IMPORTED")
         dialogs.show_message(_("Imported {count} files. The unit has restarted; its previous memory is backed up.").format(
             count=len(paths)), wait=False, wait_for_speech=True, stdscr=stdscr)
     except (OSError, subprocess.SubprocessError, WorkerError) as exc:
         dialogs.show_message(_("Import failed: {error}").format(error=exc), stdscr=stdscr)
-    finally:
-        for suffix in ("", ".program", ".before-import", ".tmp"):
-            Path(str(stage) + suffix).unlink(missing_ok=True)

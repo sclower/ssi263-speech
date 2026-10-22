@@ -1,10 +1,11 @@
 #!/bin/sh
-# blazie-emu-btspeak postinst: the firmware fetched (never fatal: without a network the menu entry fetches it on
-# first start), and the units added to every BT Speak user's User Menu.  BTE_ROOT and BTE_HOMES: the tests' own.
+# blazie-emu-btspeak postinst: the firmware fetched (never fatal: without a network the Braille Lite's item fetches it
+# on first start), and every BT Speak user's User Menu given the line that opens the Blazie menu, which lists the
+# units each time it opens (user-menu-entry; the three lines a unit each that packages before it wrote go).
+# BTE_ROOT and BTE_HOMES: the tests' own.
 set -e
 ROOT="${BTE_ROOT:-}"
 LIB="$ROOT/usr/lib/blazie-emu-btspeak"
-MENU_RUN="run /usr/bin/blazie-emu-btspeak --unit"
 
 case "$1" in
     configure)
@@ -16,24 +17,13 @@ case "$1" in
                 echo "blazie-emu-btspeak: the firmware could not be fetched now; it will be on first start"
             fi
         fi
-        # each line appended under the lock the BT Speak's own User Menu code takes (BTSpeak/user_menu.py: flock on
-        # the file), the title written only into an empty file, as it does
         for dir in ${BTE_HOMES:-/home/*}/BTSpeak; do
             [ -d "$dir" ] || continue
             um="$dir/user.menu"
             new=0
             [ -f "$um" ] || new=1
-            (
-                flock -x 9
-                if [ ! -s "$um" ]; then
-                    echo "User Menu" >&9
-                elif [ -n "$(tail -c 1 "$um")" ]; then
-                    echo >&9                # the last line had no newline: ours must not join it
-                fi
-                for entry in "Braille Lite 2000|bl-en" "Braille 'n Speak 2000|bns-en" "Type 'n Speak|tns-en"; do
-                    grep -q -- "$MENU_RUN ${entry#*|}\$" "$um" || echo "${entry%|*}: $MENU_RUN ${entry#*|}" >&9
-                done
-            ) 9>>"$um"
+            "$LIB/user-menu-entry" "$um" /usr/lib/blazie-emu-btspeak/blazie.menu \
+                "run /usr/bin/blazie-emu-btspeak --unit" 2>/dev/null || true
             [ "$new" = 0 ] || chown --reference="$dir" "$um" 2>/dev/null || true
         done
         ;;

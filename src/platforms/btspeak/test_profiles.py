@@ -23,6 +23,7 @@ class ProfileTests(unittest.TestCase):
         PROFILES = tuple(BY_KEY.values())
         self.assertEqual(set(BY_KEY), {"bl-en", "bl-es", "tns-en", "tns-es", "bns-en", "bns-sk", "bl-de", "bl-it"})
         self.assertEqual(len({p.saved for p in PROFILES}), 8)
+        self.assertFalse(any(p.release for p in PROFILES))      # the catalog's own: never under More languages
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             PROFILES = tuple(discover(EXE, root).values())
@@ -73,12 +74,13 @@ class ProfileTests(unittest.TestCase):
             image = root / 'renamed firmware.BNS'
             image.touch()
             row = dict(key='bl2_hu_1999_07', label='Braille Lite 2000 (Hungarian)', firmware=str(image),
-                       factory='', saved='bl2_hu_1999_07.state', kind='bl', codepage=850)
+                       factory='', saved='bl2_hu_1999_07.state', kind='bl', codepage=850, release=True)
             with patch('profiles.subprocess.run', return_value=SimpleNamespace(stdout=json.dumps([row]))):
                 profiles = discover(EXE, root)
             profile = profiles[row['key']]
             self.assertTrue(profile.available(root, root))
             self.assertIsNone(profile.factory)
+            self.assertTrue(profile.release)
             prefs = Preferences(root / 'preferences.json')
             prefs.store(True, unit=profile.key)
             self.assertEqual(Preferences.load(prefs.path).unit, profile.key)

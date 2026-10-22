@@ -1,0 +1,57 @@
+#!/bin/sh
+# user-menu-entry MENU BLAZIE RUN -- a BT Speak User Menu (MENU: ~/BTSpeak/user.menu) given the line that opens the
+# Blazie menu (BLAZIE: the installed blazie.menu, which lists the units each time it opens): "Blazie Emulator: menu
+# BLAZIE", unless a line opens it already, whatever its label (the user may have renamed it).  As it is added, the lines
+# the installers before the Blazie menu wrote go, a unit each ("Braille Lite 2000: RUN bl-en", "Type 'n Speak
+# (English): RUN tns-en", ...: a unit's own name, RUN being what they ran, "run .../blazie_emu --unit"): the menu
+# lists them now.  One renamed by its user stays; so does a unit copied from the Blazie menu (Ctrl+C) once its line is
+# there, and every other line, exactly as it was.  A line ending CR LF (a menu edited on Windows) is read as one
+# without the CR.  Under the
+# lock the BT Speak's own User Menu code takes (BTSpeak/user_menu.py: flock on the file), written in place, so the
+# file keeps its owner and mode; a missing or empty menu gets the title first, as user_menu.py writes it.
+# install.sh and the .deb's postinst use it.
+set -e
+MENU="$1"
+BLAZIE="$2"
+RUN="$3"
+[ -n "$MENU" ] && [ -n "$BLAZIE" ] && [ -n "$RUN" ] || { echo "user-menu-entry MENU BLAZIE RUN"; exit 2; }
+export BLAZIE RUN
+(
+    flock -x 9
+    kept="$(mktemp)"
+    trap 'rm -f "$kept"' EXIT
+    awk '
+        BEGIN {
+            ours = ": " ENVIRON["RUN"] " "
+            opens = ": menu " ENVIRON["BLAZIE"]
+        }
+        {
+            line[NR] = $0
+            bare = $0
+            sub(/[ \t\r]+$/, "", bare)
+            plain[NR] = bare
+            if (length(bare) > length(opens) && substr(bare, length(bare) - length(opens) + 1) == opens)
+                there = 1
+        }
+        END {
+            for (i = 1; i <= NR; i++) {
+                # an installer'"'"'s line: a unit'"'"'s own name (the catalog'"'"'s, every one a model'"'"'s), then ours and an id
+                at = index(plain[i], ours)
+                id = at ? substr(plain[i], at + length(ours)) : ""
+                label = at ? substr(plain[i], 1, at - 1) : ""
+                if (!there && id != "" && id !~ /[ \t]/ \
+                        && label ~ /^(Braille Lite 2000|Braille '"'"'n Speak 2000|Type '"'"'n Speak)( \(.*\))?$/) {
+                    print "user menu: removed " label " (the Blazie menu lists it)" > "/dev/stderr"
+                    continue
+                }
+                print line[i]
+            }
+            if (NR == 0) print "User Menu"
+            if (!there) {
+                print "Blazie Emulator" opens
+                print "user menu: added Blazie Emulator" > "/dev/stderr"
+            }
+        }
+    ' "$MENU" > "$kept"
+    cmp -s "$kept" "$MENU" || cat "$kept" > "$MENU"
+) 9>>"$MENU"

@@ -98,6 +98,17 @@ class Worker:
         self.send(command)
         self.wait_for(response)
 
+    def answer(self, command: str, *replies: str, timeout: float = 5) -> tuple[str, str]:
+        """Send command; return the first line whose first word is one of replies, as (that word, the rest)."""
+        self.send(command)
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            for line in self.receive(max(0, deadline - time.monotonic())):
+                word, _space, rest = line.partition(" ")
+                if word in replies:
+                    return word, rest
+        raise WorkerError(_("The emulator did not respond in time."))
+
     def close(self) -> None:
         """Save and shut down; propagate save failures to the caller."""
         try:

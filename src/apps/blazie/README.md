@@ -461,7 +461,9 @@ first: it saves its unit when it closes), for example on Linux or the BTSpeak:
                                                         state as english.state.before-import; --keep-exact:
                                                         text files keep their line ends, LF or CR LF, instead
                                                         of being made the unit's CR)
-    blazie_files extract english.state myfiles --crlf  (each file as a PC text file, CR LF)
+    blazie_files extract english.state myfiles --crlf  (each text file as a PC's, CR LF; --lf: Linux's, LF.
+                                                        A file with a NUL byte -- a compiled BASIC program --
+                                                        is binary and kept as it is, as add and import keep it)
 
 **A Type 'n Speak that was never set up** (saved by the 0.6 or 0.7 previews, or a setup question answered n: "The
 Type 'n Speak's first start" above): the import refuses ("the unit's folders were never set up"); export works. The

@@ -21,7 +21,11 @@ terminal:
     cd ssi263-speech-*-linux-aarch64
     ./install-btspeak.sh --menu
 
-That is all: "Braille Lite 2000" is now in the User Menu (and the Type 'n Speak, when its firmware is packaged).
+That is all: the User Menu now has **Blazie Emulator**, which opens the Blazie menu: each unit the installed firmware
+can start ("Braille Lite 2000 (English)", "Type 'n Speak (English)", ...), with the language releases under **More
+languages**, as in the desktop apps' Firmware menu. The menu is made each time it opens (`blazie_emu --list-units`), so
+firmware added or removed later shows there with nothing to run again. Ctrl+C on a unit in it, as anywhere in the BT
+Speak's menus, copies that unit to the User Menu, to start it from there directly.
 The package carries the firmware. `./uninstall-btspeak.sh` removes it again. The package must have been built on
 Debian 12 or older (a BT Speak's system: glibc 2.36); one built on Debian 13 will not start.
 
@@ -32,11 +36,14 @@ Install it with apt:
     sudo apt install ./blazie-emu-btspeak_<version>_arm64.deb
 
 It puts the emulator in `/usr/lib/blazie-emu-btspeak`, fetches the firmware from this project's own release download
-(checked against its published SHA-256: the firmware is never inside the .deb), and adds Braille Lite 2000,
-Braille 'n Speak 2000 and Type 'n Speak to the User Menu of every BT Speak user on the device. Without a network at
-the time, it installs all the same and the menu entry fetches the firmware on first start.
-`sudo apt remove blazie-emu-btspeak` takes the program, the fetched firmware and those three menu lines away; the
-rest of the User Menu is left exactly as it was, and the units' saved memory stays.
+(checked against its published SHA-256: the firmware is never inside the .deb), and adds **Blazie Emulator** to the
+User Menu of every BT Speak user on the device, opening the Blazie menu above (`/usr/lib/blazie-emu-btspeak/blazie.menu`).
+Upgrading from a package that put a line a unit in the User Menu takes those three lines away (the Blazie menu has
+them); one its user renamed stays. Without a network at the time, it installs all the same, and the Blazie menu has
+the Braille Lite alone: that item fetches the firmware on first start, into that user's own folder, and the menu
+lists the rest from then on. `sudo apt remove blazie-emu-btspeak` takes the program, the fetched firmware and its
+menu lines away (the Blazie Emulator line, and any unit copied from it with Ctrl+C); the rest of the User Menu is
+left exactly as it was, and the units' saved memory stays.
 
 Built with `src/platforms/btspeak/deb/build_deb.sh` after `./build_linux.sh`, on Debian 12 or older. The firmware
 comes from the release pinned in `deb/fetch-firmware` (v0.7.0's `blazie-emu-0.7.0-linux-aarch64.tar.gz`, by its
@@ -70,10 +77,12 @@ The firmware is not in the repository: put it in `firmware/blazie/` first (its R
 the folder: `src/platforms/btspeak/install.sh --menu /path/to/firmware`.
 
 `install.sh` puts `blazie_emu` and `blazie_files` in `~/.local/bin` and the firmware in `~/.local/share/ssi263-speech`
-(no root needed; `PREFIX=/usr/local sudo -E ...` for every user). `--menu` adds a line per unit to the BT Speak's
-User Menu (`~/BTSpeak/user.menu`): Braille Lite 2000, and the Braille 'n Speak 2000 and Type 'n Speak when their
-firmware is there. Choose one there to start it. `src/platforms/btspeak/uninstall.sh` takes it all away again (the
-units' saved memory, in `~/.config/ssi263-speech/blazie-emu`, is kept).
+(no root needed; `PREFIX=/usr/local sudo -E ...` for every user), and the Blazie menu in `~/.local/lib/blazie-emu`.
+`--menu` gives the BT Speak's User Menu (`~/BTSpeak/user.menu`) the **Blazie Emulator** line that opens it
+(`user-menu-entry` writes it, under the menu's own lock; a line already opening it, renamed or not, is left alone, and
+the three lines a unit each that `--menu` wrote before go). `src/platforms/btspeak/uninstall.sh` takes it all away
+again, the units copied from the Blazie menu too (the units' saved memory, in `~/.config/ssi263-speech/blazie-emu`,
+is kept).
 
 ## Keys
 
@@ -86,10 +95,13 @@ alone are not bars there, and its menu is the device's own dialogs rather than l
 | dots 1-6, space | dots 1-6, the space bar: chords exactly as on the unit, keys held seen as held (p-chord, l, then hold i-chord: the cold reset) |
 | dot 7 alone | the back bar |
 | dot 8 alone | the advance bar |
-| BT Braille: L2 or R2 | the back bar |
-| BT Braille: L3 or R3 | the advance bar (and any other keys set to pan the display in Braille Settings) |
+| BT Braille: the key set to pan left in Braille Settings (R2 by default) | the back bar |
+| BT Braille: the key set to pan right (R3 by default) | the advance bar |
 | M-chord with dot 7: space, dots 1 3 4 7 | this program's menu |
 | Z-chord with dot 7: space, dots 1 3 5 6 7 | save the unit and leave |
+
+Both routes follow Braille Settings, Navigation Key Setup, for Blazie mode: left handed, the bars are L2 and L3; with
+navigation on both sides, L3 and R3. #4's front end takes every key set to pan; this route the last one each way.
 
 The two gestures are #4's, acted on when every key is up. Any other chord with dot 7 or 8 is the program's too, and
 none of it reaches the unit (the Braille Lite has no dots 7 and 8). A bar is down for as long as you hold it; a
@@ -123,7 +135,13 @@ e-chord (the Type 'n Speak: F9 x or F1 o, its name, Enter).
 
 The desktop and terminal emulators have the same as a menu item (Firmware > Load programs and files into flash; the terminal
 menu's `p`). The native BT dialog frontend also has **Import programs and files**, with a file browser and batch selection
-([README.md](README.md#import-programs-and-files)); typing paths is only needed for this command-line example.
+([README.md](README.md#import-programs-and-files)), and **Copy files to a folder**, **Export files to disk image** and
+**Import files from disk image** ([README.md](README.md#disk-images)); typing paths is only needed for this
+command-line example.
+
+To take a file written on the unit out for the device itself, use **Copy files to a folder** in that menu, or, with
+the unit saved (Save memory, or closed), `blazie_files extract MEMORY/english.state ~/Documents/braille-lite --lf`:
+the unit's folders become folders, text gets Linux line ends, compiled BASIC programs are copied as they are.
 
 ## The braille display
 

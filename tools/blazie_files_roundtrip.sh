@@ -29,4 +29,15 @@ rm -f "$got"
 find "$T/before" "$T/after" -type d -empty -delete
 diff -r "$T/before" "$T/after" >/dev/null || fail "a file the unit had changed"
 "$TOOL" check "$T/unit.state" >/dev/null || fail "the file system's rules"
-echo "round trip: ok (export, unpack, a new file, pack, import; $(find "$T/before" -type f | wc -l) files kept)"
+# --lf, for a BT Speak's editor: a text file's lone CRs are LFs; a file with a NUL (a compiled BASIC program) as it is
+"$TOOL" extract "$T/unit.state" "$T/lf" --lf >/dev/null || fail "extract --lf"
+[ "$(od -An -c "$(find "$T/lf" -name linux.txt)" | tr -d ' ')" = 'fromlinux\n' ] || fail "extract --lf: linux.txt not LF-ended"
+binary=0
+for f in $(cd "$T/after" && find . -type f | tr ' ' '?'); do
+    for g in "$T/after"/$f; do
+        tr -d '\000' < "$g" | cmp -s - "$g" && continue        # no NUL: text, or not the unit's text type
+        binary=$((binary + 1))
+        cmp -s "$g" "$T/lf/${g#"$T/after/"}" || fail "extract --lf changed a binary file: ${g#"$T/after/"}"
+    done
+done
+echo "round trip: ok (export, unpack, a new file, pack, import; $(find "$T/before" -type f | wc -l) files kept; --lf: $binary binary files as they were)"

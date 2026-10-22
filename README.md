@@ -73,8 +73,9 @@ from. The Speak-Out and Braille Lite firmware stay out of git: to build those tw
 yourself, put your own copies in `firmware/gw-micro-speakout/` and `firmware/blazie/`.
 The README in each folder says which files, with their checksums.
 
-The SmarTalk's software is the one other program in the tree. Automated Functions gave
-it away themselves: the README on their own SmarTalk 1.21 disk says, "Please feel free to
+The SmarTalk's software is the one other program in the tree, because it is freely
+shareable by its makers' own words: the README on Automated Functions' SmarTalk 1.21 disk
+says, "Please feel free to
 share the new version of the SmarTalk software with anyone who needs it." So `S_TALK.EXE`
 is here exactly as it is on that disk, never patched, under Automated Functions' own
 copyright (1995, all rights reserved), not our MIT licence.

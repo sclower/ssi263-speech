@@ -5,7 +5,11 @@ speed Braille Lite (2026-10-16).  The English Braille Lite 2000 from its warm st
     python test_latch_race.py [--firmware DIR] [--lib PATH] [--files PATH]
 
   speech    with double speed on, the firmware's own speech (letters typed, a line read) writes exactly the same with
-            the race on and off: its writes are 10 us or more apart, so the voices are untouched
+            the race on and off
+  params    the speech parameters at double speed (on the 640 too, when bns640/june2003/ has its BSPENG.BNS and
+            bspeng_fresh.state): no key's answer left holding a phoneme, nothing caught.  Every utterance ends PA
+            into R0, then R1, 1.953 us apart; caught, R0 kept R1's value and the chip held it as a vowel until a key
+            (issue #25)
   tones     a BASIC program (below, run with Blazie's run.bns) playing 80 notes at double speed: writes caught, and
             some notes' R4 holding 37
   base      the same program at the base clock: nothing caught, no R4 of 37
@@ -13,8 +17,8 @@ The tone checks need run.bns (Blazie's BASIC runtime, from its 1995 BASIC disk) 
 (never in the repo; absent, they are skipped) and blazie_files (the emulator's file tool) to put it and the program
 into a state.
 
-Control (SSI263_LATCH_RACE_BREAK=1): the latch time 1 us, below the closest writes -- nothing is caught, and "tones"
-must fail.
+Controls: SSI263_LATCH_RACE_BREAK=1, the latch time 1 us, below the closest writes -- nothing is caught, and "tones"
+must fail; SSI263_LATCH_RACE_BREAK=wide, the 2.15 us latch before issue #25 -- "params" must fail.
 """
 import argparse
 import ctypes
@@ -29,11 +33,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 WINDOWS = sys.platform == "win32"
 BREAK = os.environ.get("SSI263_LATCH_RACE_BREAK") == "1"
+WIDE = os.environ.get("SSI263_LATCH_RACE_BREAK") == "wide"
 RATE = 22050
 SPACE = 0x40
 STATUS, PLUS, YES, EXIT = 0x0C | SPACE, 0x2C, 0x3D, 0x11 | SPACE
 LETTERS = (0x13, 0x11, 0x07, 0x07, 0x15)            # h e l l o
 READ_LINE = 0x09 | SPACE
+# the speech parameters (345-chord), dots 1 / 4 (softer, louder) and 3 / 6 (lower, higher), e-chord to leave
+PARAMS_WALK = [0x1C | SPACE] + [0x01, 0x08, 0x04, 0x20] * 3 + [0x11 | SPACE]
+PARAMS_STARTS = (0.0, 0.37)                         # two phases of the board's clock against the latch's
+WIDE_NS = 2150                                      # the latch time before issue #25 (dbf590b)
 # td.bas, compiled from this source with Blazie's COMPILE.BNS (on the emulated unit):
 #   10 print "d" / 20 for i = 1 to 20 / 30 for n = 1 to 4 / 40 sound 300 + 100 * n, 1 / 50 next n / 70 next i /
 #   80 print "done" / 90 end
@@ -67,6 +76,9 @@ def load(path):
     lib.bh_key.argtypes = [ctypes.c_void_p, ctypes.c_int]
     lib.bh_writes.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.POINTER(W))]
     lib.bh_clear_writes.argtypes = [ctypes.c_void_p]
+    lib.ssi263_reg.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    lib.ssi263_time.restype = ctypes.c_double
+    lib.ssi263_time.argtypes = [ctypes.c_void_p]
     return lib
 
 
@@ -121,6 +133,25 @@ def speech_writes(lib, fw, st, latch_ns):
     u.keys(LETTERS, 1.2)
     u.keys([READ_LINE], 3.0)
     return u.writes, u.close()
+
+
+def params_walk(lib, fw, st, start, latch_ns):
+    """the speech-parameter keys at double speed: (keys whose answer was left holding a phoneme, writes caught).  Held:
+    the chip on (R3 bit 7 clear) with a phoneme, not PA, in R0 and nothing written for 0.8 s -- what issue #25 heard:
+    every utterance ends PA into R0, then R1, 1.95 us apart, and a caught R0 keeps R1's value as a vowel"""
+    u = Unit(lib, fw, st, 1, latch_ns)
+    u.listen(12.0 + start)
+    u.double_on()
+    c0 = lib.bh_get_int(u.h, b"latch_catches")
+    held = 0
+    for k in PARAMS_WALK:
+        lib.bh_key(u.h, k)
+        u.listen(1.5)
+        quiet = not u.writes or lib.ssi263_time(u.chip) - u.writes[-1][0] > 0.8
+        held += bool(quiet and lib.ssi263_reg(u.chip, 0) & 0x3F and not lib.ssi263_reg(u.chip, 3) & 0x80)
+    caught = lib.bh_get_int(u.h, b"latch_catches") - c0
+    u.close()
+    return held, caught
 
 
 def td_state(files, fw_dir, st, run_bns, tmp):
@@ -178,7 +209,19 @@ def main():
     report(on == off and len(on) > 100 and caught_on == 0,
            "speech   at double speed: %d writes with the race, %d without, %s; %d caught (want the same, 0)"
            % (len(on), len(off), "the same" if on == off else "DIFFERENT", caught_on))
-    games = os.path.join(a.firmware, "games")
+    units = [("Braille Lite 2000", fw, st)]
+    fw640 = os.path.join(a.firmware, "bns640", "june2003")
+    if os.path.isfile(os.path.join(fw640, "BSPENG.BNS")) and os.path.isfile(os.path.join(fw640, "bspeng_fresh.state")):
+        units.append(("Braille 'n Speak 640", os.path.join(fw640, "BSPENG.BNS"), os.path.join(fw640, "bspeng_fresh.state")))
+    else:
+        print("skip params on the 640: no bns640/june2003/BSPENG.BNS and bspeng_fresh.state in %s" % a.firmware)
+    for name, ufw, ust in units:
+        runs = [params_walk(lib, ufw, ust, s, WIDE_NS if WIDE else None) for s in PARAMS_STARTS]
+        held, caught = sum(h for h, c in runs), sum(c for h, c in runs)
+        report(held == 0 and caught == 0,
+               "params   %s at double speed, %d speech-parameter keys: %d left holding a phoneme, %d writes caught "
+               "(want none: the real units never hold one)" % (name, len(PARAMS_WALK) * len(runs), held, caught))
+    games =os.path.join(a.firmware, "games")
     run_bns = next((os.path.join(games, n) for n in (os.listdir(games) if os.path.isdir(games) else [])
                     if n.lower() == "run.bns"), None)
     if not run_bns or not os.path.isfile(a.files):

@@ -81,8 +81,8 @@ starts)" and "... two-handed mode (dot 3 held as it starts)" are that restart wi
 2 s (`emu_hold_at_start`, set before its first render): the firmware says "One-hand mode on" and keeps the mode in its
 memory. They are not offered for the Type 'n Speak, whose manual has no such mode. "Double-speed upgrade installed"
 (off by default, `emu_set_double_speed`, applied at every start and at once) is Blazie's $99 chip: the unit's own
-switch (the status menu, then + (dots 3-4-6), answered y) then doubles its CPU, and BASIC's tones can garble and games
-freeze as on a real unit (the latch race), which Restart gets out of.
+switch (the status menu, then + (dots 3-4-6), answered y) then doubles its CPU, and BASIC's tones can garble as on a
+real unit (the latch race); Restart gets a unit out of anything that stops it.
 
 ## The native core: SSI263Core
 

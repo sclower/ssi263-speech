@@ -109,8 +109,9 @@ struct bl_unit {
     unsigned long long t_base, c_base;       /* board time and core cycles at the last switch */
     /* The SSI-263's latch race (bl_set_latch_race): the chip takes a register at the first edge of its own clock
        after the write; a write that comes before that edge also puts its value into the register written before it.
-       Only writes under ~2.2 us apart reach it -- the BASIC runtime's note writes at double speed, 1.46 and 2.12 us;
-       at the base clock nothing the firmware or BASIC writes is closer than 2.93 us.  Never saved. */
+       Only writes under BL_LATCH_RACE_US apart reach it -- the BASIC runtime's 1.465 us pairs at double speed, not
+       the firmware's 1.953 (bl_board.h); at the base clock nothing the firmware or BASIC writes is closer than
+       2.93 us.  Never saved. */
     double race_us;                          /* the latch time; 0: off */
     unsigned long long race_t;               /* board time of the last chip write */
     int race_reg;                            /* its register, -1 before the first */

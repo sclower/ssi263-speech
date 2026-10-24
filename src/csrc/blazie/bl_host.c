@@ -940,6 +940,7 @@ BL_API int bh_get_int(const bl_host *h, const char *name)
     if (!strcmp(name, "double_speed")) return bl_get_double_speed(h->unit);
     if (!strcmp(name, "double_speed_now")) return bl_double_speed_now(h->unit);
     if (!strcmp(name, "latch_race_ns")) return (int)(bl_latch_race(h->unit) * 1000.0 + 0.5);
+    if (!strcmp(name, "latch_gap_ns")) return (int)(bl_latch_gap(h->unit) * 1000.0 + 0.5);
     if (!strcmp(name, "latch_catches")) return (int)bl_latch_catches(h->unit);
     if (!strcmp(name, "flash_busy")) return bl_flash_busy(h->unit, NULL, NULL);
     if (!strcmp(name, "flash_chip_erases")) {
@@ -974,6 +975,7 @@ BL_API void bh_set_int(bl_host *h, const char *name, int v)
     else if (!strcmp(name, "flash_timed")) bl_flash_timed(h->unit, v);   /* the emulator: bl_board.h */
     else if (!strcmp(name, "double_speed")) bl_set_double_speed(h->unit, v);   /* off by default: bl_board.h */
     else if (!strcmp(name, "latch_race_ns")) bl_set_latch_race(h->unit, v / 1000.0);   /* tests: bl_board.h */
+    else if (!strcmp(name, "latch_gap_ns")) bl_set_latch_gap(h->unit, v / 1000.0);     /* tests: bl_board.h */
     /* tests only (run_ahead_fault.py): one allocation or store made to fail, as memory running out would */
     else if (!strcmp(name, "fail_alloc_size")) h->fail_size = v > 0 ? (size_t)v : 0;
     else if (!strcmp(name, "fail_event")) bl_fail_event(h->unit, v);

@@ -85,17 +85,22 @@ int  bl_double_speed_now(const bl_unit *u);
    clock after the write, and a write that comes before that edge also puts its value into the register written just
    before it.  Measured on Tomi's Braille Lite 2000 (2026-10-16): at double speed BASIC's tones rumble, and the rumble
    is a note's R4 holding 37, its R0's value, written 1.46 us later (regprog sessions: R4 = 37 at the base clock sounds
-   the same).  The latch time is fitted, not measured.  At double speed the writes come 9, 12 or 13 base T-states apart
-   (1.465, 1.953, 2.116 us): BASIC's notes and its switch back to speech at 9, every utterance's end (PA into R0,
-   then R1) at 12, the notes' R2-R3-R4 at 13.  1.90 catches only the 9s.  Fitted first at 2.15 so that pinball
-   sometimes froze, as on Tomi's unit, it also caught the 12: R0 kept R1's value and the chip held that vowel until
-   a key (issue #25), which neither a real 640 nor Tomi's Braille Lite ever does.  So the model no longer freezes
-   pinball (its 13s); whatever the unit does there is still unknown (Astra, Reply 249).  Nothing written at the base
-   clock comes closer than 2.93 us, so it never fires there.  bl_set_latch_race: tests (0 off); bl_latch_catches:
-   how many writes it has caught. */
-#define BL_LATCH_RACE_US 1.90
+   the same).  Both times are fitted, not measured.  The edges come every BL_LATCH_RACE_US, fitted so that pinball
+   sometimes froze, as on Tomi's unit; which of a note's writes they catch decides how it sounds, and Tomi heard
+   other spacings make more notes tear (a caught R1 of FF with a caught R4 of 37, 2026-10-24).  At double speed the
+   writes come 9, 12 or 13 base T-states apart (1.465, 1.953, 2.116 us): BASIC's notes and its switch back to speech
+   at 9, every utterance's end (PA into R0, then R1) at 12, the notes' R2-R3-R4 at 13.  A gap of BL_LATCH_GAP_US or
+   more is never caught, so only the 9s are: caught, the 12 left R0 holding R1's value, and the chip held that vowel
+   until a key (issue #25), which neither a real 640 nor Tomi's Braille Lite ever does.  So the model no longer
+   freezes pinball (its 13s); whatever the unit does there is still unknown (Astra, Reply 249).  Nothing written at
+   the base clock comes closer than 2.93 us, so it never fires there.  bl_set_latch_race, bl_set_latch_gap: tests
+   (0 off); bl_latch_catches: how many writes it has caught. */
+#define BL_LATCH_RACE_US 2.15
+#define BL_LATCH_GAP_US 1.90
 void bl_set_latch_race(bl_unit *u, double us);
 double bl_latch_race(const bl_unit *u);
+void bl_set_latch_gap(bl_unit *u, double us);
+double bl_latch_gap(const bl_unit *u);
 unsigned long long bl_latch_catches(const bl_unit *u);
 /* the battery gauge's reading (0-255, the converter's raw value); -1 (the default) leaves ports B0h/81h as they
    were: the status menu's % then waits forever */

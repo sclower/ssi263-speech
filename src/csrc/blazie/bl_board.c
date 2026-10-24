@@ -109,10 +109,11 @@ struct bl_unit {
     unsigned long long t_base, c_base;       /* board time and core cycles at the last switch */
     /* The SSI-263's latch race (bl_set_latch_race): the chip takes a register at the first edge of its own clock
        after the write; a write that comes before that edge also puts its value into the register written before it.
-       Only writes under BL_LATCH_RACE_US apart reach it -- the BASIC runtime's 1.465 us pairs at double speed, not
+       Only writes under BL_LATCH_GAP_US apart reach it -- the BASIC runtime's 1.465 us pairs at double speed, not
        the firmware's 1.953 (bl_board.h); at the base clock nothing the firmware or BASIC writes is closer than
        2.93 us.  Never saved. */
-    double race_us;                          /* the latch time; 0: off */
+    double race_us;                          /* the edges' spacing (the latch time); 0: off */
+    double race_gap_us;                      /* the widest gap it can catch (bl_set_latch_gap) */
     unsigned long long race_t;               /* board time of the last chip write */
     int race_reg;                            /* its register, -1 before the first */
     unsigned long long race_catches;         /* bl_latch_catches */
@@ -312,7 +313,7 @@ static int race_caught(const bl_unit *u, unsigned long long t)
     double us_per_t = 1e6 / u->clock_hz;
     double last = (double)u->race_t * us_per_t, now = (double)t * us_per_t;
     double edge = ((double)(unsigned long long)(last / u->race_us) + 1.0) * u->race_us;
-    return now < edge;
+    return now < edge && now - last < u->race_gap_us;
 }
 
 static void io_write(void *ctx, uint16_t Port, uint8_t V)
@@ -500,6 +501,7 @@ bl_unit *bl_create(const char *firmware, const char *state, double phon_ms,
     u->clock_hz = 6144000.0;
     u->phon_ms = phon_ms;
     u->race_us = BL_LATCH_RACE_US;
+    u->race_gap_us = BL_LATCH_GAP_US;
     u->race_reg = -1;
     u->irq_line = Z180_INT1;
     u->ssi_ready_value = 0x80;
@@ -661,6 +663,16 @@ void bl_set_latch_race(bl_unit *u, double us)
 double bl_latch_race(const bl_unit *u)
 {
     return u->race_us;
+}
+
+void bl_set_latch_gap(bl_unit *u, double us)
+{
+    u->race_gap_us = us > 0.0 ? us : 0.0;
+}
+
+double bl_latch_gap(const bl_unit *u)
+{
+    return u->race_gap_us;
 }
 
 unsigned long long bl_latch_catches(const bl_unit *u)

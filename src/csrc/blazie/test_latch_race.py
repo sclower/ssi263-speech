@@ -18,7 +18,8 @@ The tone checks need run.bns (Blazie's BASIC runtime, from its 1995 BASIC disk) 
 into a state.
 
 Controls: SSI263_LATCH_RACE_BREAK=1, the latch time 1 us, below the closest writes -- nothing is caught, and "tones"
-must fail; SSI263_LATCH_RACE_BREAK=wide, the 2.15 us latch before issue #25 -- "params" must fail.
+must fail; SSI263_LATCH_RACE_BREAK=wide, every gap under the edges' 2.15 us caught, as before issue #25 -- "params"
+must fail.
 """
 import argparse
 import ctypes
@@ -42,7 +43,7 @@ READ_LINE = 0x09 | SPACE
 # the speech parameters (345-chord), dots 1 / 4 (softer, louder) and 3 / 6 (lower, higher), e-chord to leave
 PARAMS_WALK = [0x1C | SPACE] + [0x01, 0x08, 0x04, 0x20] * 3 + [0x11 | SPACE]
 PARAMS_STARTS = (0.0, 0.37)                         # two phases of the board's clock against the latch's
-WIDE_NS = 2150                                      # the latch time before issue #25 (dbf590b)
+WIDE_NS = 2150                                      # the widest gap caught before issue #25: the edges' spacing
 # td.bas, compiled from this source with Blazie's COMPILE.BNS (on the emulated unit):
 #   10 print "d" / 20 for i = 1 to 20 / 30 for n = 1 to 4 / 40 sound 300 + 100 * n, 1 / 50 next n / 70 next i /
 #   80 print "done" / 90 end
@@ -135,14 +136,16 @@ def speech_writes(lib, fw, st, latch_ns):
     return u.writes, u.close()
 
 
-def params_walk(lib, fw, st, start, latch_ns):
+def params_walk(lib, fw, st, start, gap_ns):
     """the speech-parameter keys at double speed: (keys whose answer was left holding a phoneme, writes caught).  Held:
     the chip on (R3 bit 7 clear) with a phoneme, not PA, in R0 and nothing written for 0.8 s -- what issue #25 heard:
     every utterance ends PA into R0, then R1, 1.95 us apart, and a caught R0 keeps R1's value as a vowel"""
-    u = Unit(lib, fw, st, 1, latch_ns)
+    u = Unit(lib, fw, st, 1)
+    if gap_ns is not None:
+        lib.bh_set_int(u.h, b"latch_gap_ns", gap_ns)
     u.listen(12.0 + start)
     u.double_on()
-    c0 = lib.bh_get_int(u.h, b"latch_catches")
+    c0 =lib.bh_get_int(u.h, b"latch_catches")
     held = 0
     for k in PARAMS_WALK:
         lib.bh_key(u.h, k)

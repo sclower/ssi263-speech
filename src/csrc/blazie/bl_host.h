@@ -92,8 +92,8 @@ BL_API int bh_set_idle(bl_host *h, const bl_idle_options *o);
    "flash_timed" (write only; 0 = off, the default): the file flash's busy time (bl_board.h bl_flash_timed), which the
    emulator turns on; read-only "flash_busy" and "flash_chip_erases" (bl_flash_busy).
    "double_speed" (0 = off, the default: bl_board.h bl_set_double_speed), read-only "double_speed_now" and "ccr";
-   "latch_race_ns" (the SSI-263's latch time, bl_board.h BL_LATCH_RACE_US, in ns; 0 off: tests) and read-only
-   "latch_catches" (the writes it caught).
+   "latch_race_ns" (the SSI-263's latch time, bl_board.h BL_LATCH_RACE_US, in ns; 0 off: tests), "latch_gap_ns" (the
+   widest gap it catches, BL_LATCH_GAP_US) and read-only "latch_catches" (the writes it caught).
    Tests only: "run_ahead_break" (RA_BRK_*), "log_ar" (the A/R edges given to the unit, reg 8, and the run-ahead
    segments' openings, reg 9 + how, in the write log), and one failure each, as memory running out would cause it:
    "fail_alloc_size" (run_ahead.c's next allocation of that many bytes), "fail_event" / "fail_tx" / "fail_log" (the

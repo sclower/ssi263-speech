@@ -106,8 +106,8 @@ check "latch race: BASIC's tones at double speed, speech untouched" python3 src/
 [ -f "$DATA/games/run.bns" ] && control "latch race CONTROL (the latch below the closest writes, must fail)" \
     "^ok +speech " "^FAIL tones " "^latch race: 1 FAILED$" -- env SSI263_LATCH_RACE_BREAK=1 \
     python3 src/csrc/blazie/test_latch_race.py --lib "$LIB" --firmware "$DATA" --files build/linux/blazie_files
-# and the 2.15 us latch before issue #25: a speech-parameter answer left holding a vowel, must fail
-[ -f "$DATA/BL2ENG.BNS" ] && control "latch race CONTROL (the 2.15 us latch, a held vowel, must fail)" \
+# and every gap under 2.15 us caught, as before issue #25: a speech-parameter answer left holding a vowel, must fail
+[ -f "$DATA/BL2ENG.BNS" ] && control "latch race CONTROL (gaps up to 2.15 us caught, a held vowel, must fail)" \
     "^ok +speech " "^FAIL params +Braille Lite 2000 " "^latch race: [0-9]+ FAILED$" -- env SSI263_LATCH_RACE_BREAK=wide \
     python3 src/csrc/blazie/test_latch_race.py --lib "$LIB" --firmware "$DATA" --files build/linux/blazie_files
 # the units' own accented letters (bl_voice.c's pages and folds: Hungarian, Slovak, Czech, Polish, Croatian, French,

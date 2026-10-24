@@ -1847,11 +1847,11 @@ if os.path.isfile(os.path.join(os.path.dirname(HERE), "dist", "blazie-lib", "x64
     # the SSI-263's latch race (bl_board.h BL_LATCH_RACE_US): the firmware's speech untouched at double speed; BASIC's
     # tones caught there (when firmware/blazie/games/ has Blazie's run.bns), none at the base clock; no speech-parameter
     # answer left holding a vowel (issue #25).  Its controls: the latch below the closest writes, nothing caught, the
-    # tones check must fail; the 2.15 us latch before issue #25, the params check must fail
+    # tones check must fail; every gap under 2.15 us caught, as before issue #25, the params check must fail
     CHECKS.append(check("latch race: BASIC's tones at double speed, speech untouched",
                         [PY, os.path.join(BL_SRC, "test_latch_race.py")]))
     if os.path.isfile(os.path.join(FW_BLAZIE, "BL2ENG.BNS")):
-        CHECKS.append(check("latch race CONTROL (the 2.15 us latch, a held vowel, must fail)",
+        CHECKS.append(check("latch race CONTROL (gaps up to 2.15 us caught, a held vowel, must fail)",
                             [PY, os.path.join(BL_SRC, "test_latch_race.py")], env={"SSI263_LATCH_RACE_BREAK": "wide"},
                             expect_fail=True, fail_marks=[r"^ok +speech ", r"^FAIL params +Braille Lite 2000 ",
                                                           r"^latch race: \d+ FAILED$"]))

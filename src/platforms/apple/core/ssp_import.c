@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "blazie/bl_firmware.h"            /* blv_sha256 */
+#include "smartalk/st_host.h"              /* STH_SHA256 */
 #include "ssa_import.h"
 #include "ssp_import.h"
 
@@ -30,6 +31,8 @@ const char *ssp_aicom_file(int found)
         if (AICOM[i].found == found) return AICOM[i].file;
     return NULL;
 }
+
+const char *ssp_smartalk_sha256(void) { return STH_SHA256; }
 
 int ssp_import_firmware(const unsigned char *data, long n, const char *out, char *msg, int msglen)
 {

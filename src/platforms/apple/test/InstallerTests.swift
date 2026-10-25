@@ -17,11 +17,11 @@ var failures = 0
 
 let disks = CommandLine.arguments.count > 2 ? URL(fileURLWithPath: CommandLine.arguments[2]) : nil
 
-// every voice the library has (ssa_engine.h: 0 ..< SSA_ALL_VOICES, the Sounding Board's 27 last) is one of the app's,
+// every voice the library has (ssa_engine.h: 0 ..< SSA_ALL_VOICES, the SmarTalk's 28 last) is one of the app's,
 // once: the Apple column of tools/check_uniform.py's matrix
 do {
     let indexes = SsiShared.voices.map { Int($0.index) }.sorted()
-    let ok = indexes == Array(0..<Int(SSA_ALL_VOICES)) && SsiShared.voices.last?.key == "soundingboard"
+    let ok = indexes == Array(0..<Int(SSA_ALL_VOICES)) && SsiShared.voices.last?.key == "smartalk"
     print("\(ok ? "ok   " : "FAIL ") every voice of the library is the app's, once: \(indexes.count) of \(SSA_ALL_VOICES)")
     if !ok { failures += 1 }
 }
@@ -93,6 +93,45 @@ if var changed = try? Data(contentsOf: sbCom) {
     try? FileManager.default.createDirectory(at: copy.deletingLastPathComponent(), withIntermediateDirectories: true)
     try? changed.write(to: copy)
     refuses("SB.COM with one byte changed", [copy], "does not contain")
+}
+
+// Automated Functions' SmarTalk (0.9.0): the repository's S_TALK.EXE alone, then a zip holding it where the NVDA
+// add-on does (checked to speak by the commit); a copy with one byte changed is refused
+let stExe = repo.appendingPathComponent("firmware/automated-functions-smartalk/S_TALK.EXE")
+if let exe = try? Data(contentsOf: stExe) {
+    // Setup names the copy to bring by the library's sha256 and the size its row says: the repository's file's
+    var d = [UInt8](repeating: 0, count: 32)
+    exe.withUnsafeBytes { blv_sha256($0.bindMemory(to: UInt8.self).baseAddress, exe.count, &d) }
+    let hex = d.map { String(format: "%02x", $0) }.joined()
+    let size = SsiShared.voices.first { $0.key == "smartalk" }?.bring.contains("(\(exe.count.formatted()) bytes)")
+    let ok = hex == String(cString: ssp_smartalk_sha256()) && size == true
+    print("\(ok ? "ok   " : "FAIL ") the SmarTalk's sha256 and size, as Setup says them: \(hex), \(exe.count) bytes")
+    if !ok { failures += 1 }
+}
+run("the SmarTalk's S_TALK.EXE", ["automated-functions-smartalk/S_TALK.EXE"], expect: ["smartalk"],
+    kept: ["S_TALK.EXE", "S_TALK.EXE.label"])
+if FileManager.default.fileExists(atPath: stExe.path), let unit = SsiShared.unitFolder {
+    for f in ["S_TALK.EXE", "S_TALK.EXE.label"] {
+        try? FileManager.default.removeItem(at: unit.appendingPathComponent(f))
+    }
+    let tree = root.appendingPathComponent("st-zip/synthDrivers/_ssi263_unified/_ssi263_smartalk")
+    try? FileManager.default.createDirectory(at: tree, withIntermediateDirectories: true)
+    try? FileManager.default.copyItem(at: stExe, to: tree.appendingPathComponent("S_TALK.EXE"))
+    let zip = Process()
+    zip.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
+    zip.currentDirectoryURL = root.appendingPathComponent("st-zip")
+    zip.arguments = ["-qr", "../smartalk.zip", "synthDrivers"]
+    try? zip.run()
+    zip.waitUntilExit()
+    run("the SmarTalk from a zip, in the add-on's folder", ["smartalk.zip"], expect: ["smartalk"],
+        kept: ["S_TALK.EXE", "S_TALK.EXE.label"], from: root)
+}
+if var changed = try? Data(contentsOf: stExe) {
+    changed[1000] ^= 1
+    let copy = root.appendingPathComponent("changed/S_TALK.EXE")
+    try? FileManager.default.createDirectory(at: copy.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try? changed.write(to: copy)
+    refuses("S_TALK.EXE with one byte changed", [copy], "does not contain")
 }
 
 // the confirmation's words (Android's): a language update takes a few seconds, and one already here is replaced;

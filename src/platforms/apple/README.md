@@ -26,11 +26,17 @@ screen", `FirmwareImport.doneMessage`, Android's). A zip is read in every folder
 archive of one's own, the emulator's download, the firmware collection, the add-on inside any of them); a zip in it
 is opened too, one level, and a zip in that one is named, never dropped in silence. An entry of the source is read up
 to 32 MB (a zip in it), anything else over 4 MB is skipped. Last, after the release voices so no voice before it
-moves (`ssa_engine.h`'s `SSA_SOUNDINGBOARD`, 27 of 28): GW Micro's Sounding Board, the Speak-Out's voice on the
+moves (`ssa_engine.h`'s `SSA_SOUNDINGBOARD`, 27 of 29): GW Micro's Sounding Board, the Speak-Out's voice on the
 card's own DOS drivers (`src/csrc/soundingboard`, on the Accent-mini's pc86), imported from `sb.zip`, from the 0.8.5
 add-on (`_ssi263_speakout/`, beside the Speak-Out's HEX) or as its `SBLOAD.COM` and `SB.COM` chosen together (several
 loose files are judged as one source): the voice needs both, so one alone is refused with why. It is always shown in
-the firmware list, and takes the Speak-Out's settings. Languages work as in TGSpeechBox's speech extension, with Android's one locale
+the firmware list, and takes the Speak-Out's settings. After it (0.9.0, `SSA_SMARTALK`, 28 of 29): Automated
+Functions' SmarTalk, its own DOS text-to-speech `S_TALK.EXE` 1.21 on the same pc86 (`src/csrc/smartalk`), known by its
+sha256 alone (`ssa_import_smartalk`) and imported as the file, from the disk's zip or from any zip or add-on holding
+it; the app never carries it (the Android APK does), and `check_archive_no_firmware.py` refuses it by its sha256.
+Setup names the copy to bring by version, size and sha256 (`ssp_smartalk_sha256`, the library's own), never where to
+get it. It is checked to speak, nothing prepared; rate, pitch, volume, inflection and "Read numbers as words" apply,
+its tone is the program's own. Languages work as in TGSpeechBox's speech extension, with Android's one locale
 per voice: the units have no dialect firmware, so the English voices are en-US only and the Spanish Braille Lite es-ES
 only (0.8's first builds also offered en-GB, en-AU, en-CA and es-MX copies; their identifiers still name the voice). The locale ends the voice's identifier (`com.ssi263speech.braillelite.de-de`), and VoiceOver switches language
 by choosing another voice for the next request. `<lang>` elements inside a request are not switched on. "Lock
@@ -128,7 +134,7 @@ carries no firmware at all (Android's checks, plus Aicom's files). The icon is d
     sh src/platforms/apple/test/test_installer.sh                  the app's import on the real firmware, as the app runs it,
                                                                    then the unit tab's catalog and two units started
     SSI263_UNIT_BREAK=factory sh src/platforms/apple/test/test_installer.sh             control: must FAIL
-    SSI263_IMPORT_BREAK=1|unopened|state|speakout|accent|release|soundingboard|export sh .../run_swift_tests.sh   controls
+    SSI263_IMPORT_BREAK=1|unopened|state|speakout|accent|release|soundingboard|smartalk|export sh .../run_swift_tests.sh   controls
 
 `test_apple_core.py` links Android's host-side program (`test_android_native.c`) against each runnable slice's
 `libssi263core.a`, the library the apps link, and requires every case's samples and PCM hash to be the desktop
@@ -156,12 +162,14 @@ must fail.
 deeper said, the emulator's download and the firmware collection, the add-on, update programs, only the releases on the list, never a state, the Speak-Out's HEX, the words), the Accents' files (the
 Accent add-on's `accent-sa/` ROMs and driver, loose and renamed), each zip form the reader takes (stored, deflated,
 the sizes in a data descriptor), and zips made by `ditto` (Finder's Compress), Info-ZIP's `zip` and Python's
-`zipfile`. `SSI263_IMPORT_BREAK=1` (a zip's top alone) fails 39 of its cases, `=unopened` the zip in a zip.
-`test_installer.sh` also judges a real Blazie firmware collection zip when `FIRMWARE_COLLECTION` (paths.local) names
+`zipfile`. `SSI263_IMPORT_BREAK=1` (a zip's top alone) fails 39 of its cases, `=unopened` the zip in a zip,
+`=smartalk` the SmarTalk's three (its file alone, in the add-on, in its disk's zip). `test_installer.sh` imports the
+repository's `S_TALK.EXE` alone and in a zip, refuses a copy with one byte changed, and holds Setup's sha256 and size
+to the file; it also judges a real Blazie firmware collection zip when `FIRMWARE_COLLECTION` (paths.local) names
 one: every Blazie voice and unit-tab release in it, each once, the programs left out.
 
 On the Mac, `test_android_native.py` runs every block but the Accent SA's, whose reference is the NVDA driver on the
-Windows DLLs: `SSI263_ANDROID_TEST_ONLY=bl,ra,num,so,mini,import`.
+Windows DLLs: `SSI263_ANDROID_TEST_ONLY=bl,ra,num,so,mini,st,import`.
 
 ## Files
 

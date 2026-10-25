@@ -115,6 +115,10 @@ func disk(_ toolkit: Bool) -> Data { bytes("DOS33DISK") + bytes(toolkit ? "TOOLK
 let sbLoad = bytes("SBLOAD") + filled(1300) { UInt8(($0 * 7) & 0xFF) }
 let sbCom = bytes("SBCOM") + filled(740) { UInt8(($0 * 9) & 0xFF) }
 
+/// A made-up S_TALK.EXE: the native side knows the real one by its sha256.
+let sTalk = bytes("SMARTALKEX") + filled(2500) { UInt8(($0 * 13) & 0xFF) }
+let sTalkLabel = "SmarTalk: Automated Functions' S_TALK.EXE 1.21"
+
 /// A made-up state: the size every state has, whatever is in it.
 func state() -> Data { filled(FirmwareImport.stateSize) { UInt8(($0 * 13) & 0xFF) } }
 
@@ -148,6 +152,10 @@ struct Fake: FirmwareImport.Identify {
             try? data.write(to: out)
             return text.hasPrefix("SBLOAD") ? (FirmwareImport.sbLoad, "GW Micro Sounding Board 2.7: SBLOAD.COM")
                 : (FirmwareImport.sbCom, "GW Micro Sounding Board 2.7: SB.COM")
+        }
+        if text.hasPrefix("SMARTALKEX") {
+            try? data.write(to: out)
+            return (FirmwareImport.smartalk, sTalkLabel)
         }
         if text.hasPrefix("AICOM ") {
             let which = String(text.dropFirst(6).prefix(while: { $0 != "\n" }))
@@ -754,7 +762,7 @@ for (label, tool) in [("ditto (Finder's Compress)", ["/usr/bin/ditto", "-c", "-k
 
 test("theWordsNameEveryUnit") {
     eq(FirmwareImport.noFirmwareFile, "This file does not contain Braille Lite, Braille 'n Speak, Speak-Out, " +
-        "Sounding Board, Mockingboard or Accent firmware.")
+        "Sounding Board, SmarTalk, Mockingboard or Accent firmware.")
     check(FirmwareImport.whatToChoose.contains("Lite2000.BNS (German, Italian)"), "")
     check(FirmwareImport.whatToChoose.contains("For the Slovak Braille 'n Speak 2000: BS2SLL.BNS"), "")
     check(FirmwareImport.whatToChoose.contains("your own copy of Mockingboard disk 1"), "")
@@ -827,6 +835,51 @@ test("theSoundingBoardIsNamedForTheFilesToBring") {
     check(FirmwareImport.order.contains(SB), "the order has no Sounding Board")
     eq(FirmwareImport.partFiles[SB], ["SBLOAD.COM", "SB.COM"])
     eq(FirmwareImport.files[SB], "SBLOAD.COM")
+}
+
+// ---- Automated Functions' SmarTalk: S_TALK.EXE, one file, from its disk or the NVDA add-on that carries it (0.9.0) -
+
+let ST = FirmwareImport.smartalk
+
+test("theSmarTalksExeIsItsVoice") {
+    let plan = inspect("S_TALK.EXE", sTalk)
+    eq(plan.refusal, nil)
+    eq(kinds(plan), [ST])
+    eq(plan.found.first?.label, sTalkLabel)
+    eq(plan.found.first.flatMap { try? Data(contentsOf: $0.firmware) }, sTalk)
+    eq(plan.found.first?.parts.count, 0)
+    eq(FirmwareImport.keptAs(ST, Fake())?.file, "S_TALK.EXE")
+    check(FirmwareImport.keptAs(ST, Fake())?.state == nil, "the SmarTalk has a state")
+}
+
+test("theAddOnBringsTheSmarTalkItCarries") {
+    // the add-on carries S_TALK.EXE beside the SmarTalk's driver (nvda/build_ssi263.py stage_smartalk), with its
+    // notice: one import brings it with the Speak-Out
+    let u = "synthDrivers/_ssi263_unified/"
+    let plan = inspect("ssi263-speech.nvda-addon", zip([("manifest.ini", bytes("name = ssi263")),
+        (u + "_ssi263_speakout/SPEAKOUT.HEX", hex(true)), (u + "_ssi263_smartalk/S_TALK.EXE", sTalk),
+        (u + "_ssi263_smartalk/licenses/SmarTalk-software-notice.txt", bytes("Copyright 1995"))]))
+    eq(plan.refusal, nil)
+    eq(kinds(plan), [SO, ST])
+    eq(plan.found.last.flatMap { try? Data(contentsOf: $0.firmware) }, sTalk)
+}
+
+test("theSmarTalksDiskAsAZipIsItsVoice") {
+    // the disk's own files, as its zip holds them: the program beside its tools, manuals and a folder
+    let plan = inspect("SmarTalk V1.21 disk.zip", zip([("INSTALL.BAT", bytes("@echo off")),
+        ("README.TXT", bytes("SmarTalk")), ("S_TALK.EXE", sTalk), ("XS_TALK.EXE", bytes("MZ another")),
+        ("SETSMART.EXE", bytes("MZ setup")), ("SMARTALK/SMARTALK.DLL", bytes("MZ dll"))]))
+    eq(plan.refusal, nil)
+    eq(kinds(plan), [ST])
+    eq(plan.found.first?.from, "S_TALK.EXE")
+}
+
+test("theSmarTalkIsNamedForTheFileToBring") {
+    check(FirmwareImport.whatToChoose.contains("For the SmarTalk: Automated Functions' S_TALK.EXE 1.21 (36,882 " +
+                                               "bytes), from the SmarTalk V1.21 disk, or a zip holding it."), "")
+    eq(FirmwareImport.order.filter { $0 == SB || $0 == ST }, [SB, ST])
+    eq(FirmwareImport.files[ST], "S_TALK.EXE")
+    eq(FirmwareImport.name(of: ST), "SmarTalk")
 }
 
 // ---- any folder of a zip, and a zip in it (Android's 0.8.5 import, 2026-10-18) ------------------------------------

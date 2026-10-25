@@ -114,7 +114,7 @@ enum FirmwareInstaller {
     /// Italian and Slovak run English's recipe or one as long; a release voice's takes as long as English's, about
     /// 3 s on an M-series Mac, as Android's SsiImport weighs it); the rest only a check.
     private static func weight(_ kind: Int) -> Double {
-        // (the Sounding Board, as the Speak-Out: checked, nothing prepared)
+        // (the Sounding Board and the SmarTalk, as the Speak-Out: checked, nothing prepared)
         kind == FirmwareImport.spanish ? 1150 : FirmwareImport.blazie.contains(kind) || isReleaseVoice(kind) ? 150 : 15
     }
 
@@ -160,10 +160,12 @@ enum FirmwareInstaller {
 
     private static func isReleaseVoice(_ kind: Int) -> Bool { releaseVoice(kind) != nil }
 
-    /// The units heard once before they are taken: the Blazie units, the Speak-Out and the Mockingboards (the
+    /// The units heard once before they are taken: the Blazie units, the Speak-Out, the Sounding Board, the SmarTalk
+    /// and the Mockingboards (the
     /// Accents' files are known by their sha256 alone, and the Accent SA needs all three).
     private static let probed: Set<Int> = FirmwareImport.blazie.union([FirmwareImport.speakout,
                                                                       FirmwareImport.soundingboard,
+                                                                      FirmwareImport.smartalk,
                                                                       FirmwareImport.mockingboard,
                                                                       FirmwareImport.mockingboardEarly])
 

@@ -13,8 +13,8 @@
 extern "C" {
 #endif
 
-/* What ssp_import_firmware found: ssa_import_firmware's (BLV_FW_ENGLISH 0, BLV_FW_SPANISH 1, SSA_HEX_SPEAKOUT 3, or a
-   negative refusal) or one of Aicom's files. */
+/* What ssp_import_firmware found: ssa_import_firmware's (BLV_FW_ENGLISH 0, BLV_FW_SPANISH 1, SSA_HEX_SPEAKOUT 3,
+   SSA_SMARTALK 28 ..., or a negative refusal) or one of Aicom's files. */
 #define SSP_FW_ACCENT_U2 10                /* the Accent SA's 8085 program ROM, 64 KB */
 #define SSP_FW_ACCENT_U3 11                /* its dictionary, part 1, 32 KB */
 #define SSP_FW_ACCENT_U4 12                /* its dictionary, part 2, 32 KB */
@@ -26,6 +26,10 @@ extern "C" {
 #define SSP_FW_RELEASE 100
 /* The file name each of Aicom's is kept under (as the repository's firmware/ and the NVDA add-on name them). */
 const char *ssp_aicom_file(int found);
+
+/* The SmarTalk's S_TALK.EXE 1.21 as ssa_import_firmware knows it: its sha256 in hex (st_host.h's STH_SHA256), for
+   Setup to say which copy to bring (ssa_import_firmware returns SSA_SMARTALK for it). */
+const char *ssp_smartalk_sha256(void);
 
 /* Judges data: Aicom's files by their sha256 first (written to out exactly, their label in msg), then
    ssa_import_firmware's judgement (the Braille Lite's release written to out as a .BNS, or the Speak-Out's HEX),

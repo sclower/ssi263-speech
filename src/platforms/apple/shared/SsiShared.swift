@@ -92,11 +92,14 @@ enum SsiShared {
     ]
 
     /// The voices after the release table's (ssa_engine.h, 0.8.5: SSA_SOUNDINGBOARD is SSA_VOICES, so no voice
-    /// before it moves): GW Micro's Sounding Board, the Speak-Out's voice on the card's own DOS drivers, imported from
-    /// sb.zip (its two files: ssa_engine.c's AFTER_RELEASES).
+    /// before them moves): GW Micro's Sounding Board, the Speak-Out's voice on the card's own DOS drivers, imported from
+    /// sb.zip (its two files: ssa_engine.c's AFTER_RELEASES); then Automated Functions' SmarTalk (0.9.0,
+    /// SSA_SMARTALK), its own DOS text-to-speech S_TALK.EXE on the same emulated PC, imported, never in the app.
     private static let afterReleases: [Voice] = [
         Voice(index: 27, key: "soundingboard", name: "Sounding Board (GW Micro)", short: "Sounding Board",
               locales: english, files: ["SBLOAD.COM", "SB.COM"], bring: "GW Micro's sb.zip (SBLOAD.COM and SB.COM)"),
+        Voice(index: 28, key: "smartalk", name: "SmarTalk (Automated Functions)", short: "SmarTalk",
+              locales: english, files: ["S_TALK.EXE"], bring: "S_TALK.EXE 1.21 (36,882 bytes)"),
     ]
 
     /// The release voices, from the release table the library carries (bl_languages.txt; never a list kept here):

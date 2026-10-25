@@ -143,6 +143,7 @@ static const char *VOICE_NAMES[SSA_RELEASE_FIRST] = {"en", "es", "sa", "so", "mi
 static const char *voice_name(int v)
 {
     if (v == SSA_SOUNDINGBOARD) return "sb";
+    if (v == SSA_SMARTALK) return "st";
     return v < SSA_RELEASE_FIRST ? VOICE_NAMES[v] : blv_release_voice_key(ssa_voice_release(v));
 }
 

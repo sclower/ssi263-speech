@@ -174,6 +174,11 @@ def check_speak(exe, data, aicom, env, releases=()):
         ok = rows.get("sb-phrases", (0,))[0] > 0
         print("%-5s speak  the Sounding Board spoke, after the release voices" % ("ok" if ok else "FAIL"))
         bad += not ok
+    # the SmarTalk (voice 28, after the Sounding Board): its S_TALK.EXE is in the repository, staged by data_folder
+    if os.path.isfile(os.path.join(data, "S_TALK.EXE")):
+        ok = rows.get("st-phrases", (0,))[0] > 0
+        print("%-5s speak  the SmarTalk spoke, after the Sounding Board" % ("ok" if ok else "FAIL"))
+        bad += not ok
     print("%-5s speak  %d requests on %d voices: the segments' own PCM with the pauses between, a stop that holds" % (
         "ok" if not bad else "FAIL", cases, len({k.split("-")[0] for k in rows})))
     return bad

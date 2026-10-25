@@ -57,6 +57,10 @@ static const voice_def ALL[] = {
      {"aicom-accent-sa/u2.BIN", "aicom-accent-sa/u3.BIN", "aicom-accent-sa/u4.BIN", NULL}, {0x10000, 0x8000, 0x8000}},
     {"accentmini:mini", "Accent-mini", "en-US", "accent-mini", {"aicom-accent-mini/SPKEMS.DVC", NULL}},
     {"speakout:speakout", "Speak-Out", "en-US", "speakout", {"gw-micro-speakout/SPEAKOUT.HEX", NULL}},
+    /* 0.8.5: GW Micro's Sounding Board, the Speak-Out's voice on the card's DOS drivers -- last in voices.c, listed
+       here right under the Speak-Out (Tomi, 2026-10-25; tools/check_uniform.py FOLLOWS) */
+    {"speakout:soundingboard", "Sounding Board (GW Micro)", "en-US", "soundingboard",
+     {"gw-micro-sounding-board/SBLOAD.COM", "gw-micro-sounding-board/SB.COM", NULL}},
     {"mockingboard:mockingboard", "Mockingboard", "en-US", "mockingboard",
      {"sweet-micro-mockingboard/mockingboard-tts-1.1.bin", NULL}},
     {"mockingboard:early", "Mockingboard, early", "en-US", "mockingboard",      /* Mockingboard disk 1's program */
@@ -64,9 +68,6 @@ static const voice_def ALL[] = {
     /* 0.8: the Braille Lite 2000 in 17 more languages (Blazie's updates, an anonymous donation), from the release
        table, each its image and state in the data folder's bl2000/ (tools/make_release_states.py) */
     SSV_BLAZIE_RELEASE_SD_ROWS
-    /* 0.8.5: GW Micro's Sounding Board, the Speak-Out's voice on the card's DOS drivers (voices.c, last) */
-    {"speakout:soundingboard", "Sounding Board (GW Micro)", "en-US", "soundingboard",
-     {"gw-micro-sounding-board/SBLOAD.COM", "gw-micro-sounding-board/SB.COM", NULL}},
     /* Automated Functions' SmarTalk: its own DOS text-to-speech, S_TALK.EXE 1.21 (voices.c, after the Sounding Board) */
     {"smartalk:smartalk", "SmarTalk (Automated Functions)", "en-US", "smartalk",
      {"automated-functions-smartalk/S_TALK.EXE", NULL}},

@@ -285,6 +285,15 @@ CHECKS.append(check("uniform CONTROL (Linux lacks the Spanish number words, must
                     fail_marks=[r"^  number words: Braille Lite 2000 \(Spanish\) +yes +yes +NO +yes +$",
                                 r"^MISSING  number words for Braille Lite 2000 \(Spanish\) \[blazie:blazie_es\] on "
                                 r"Linux: dropped by SSI263_UNIFORM_DROP$", r"^uniform: 1 gap$"]))
+# ... and the order: the Sounding Board right under the Speak-Out in each platform's list (Tomi, 2026-10-25)
+CHECKS.append(check("uniform CONTROL (SAPI lists the Sounding Board last, must fail)", UNIFORM,
+                    env={"SSI263_UNIFORM_ORDER_BREAK": "sapi"}, expect_fail=True,
+                    fail_marks=[r"^ORDER  speakout:soundingboard is not listed right after speakout:speakout on SAPI "
+                                r"\(after it: accentmini:mini\)$", r"^ok +Android: ", r"^uniform: 1 gap$"]))
+CHECKS.append(check("uniform CONTROL (Android lists the Sounding Board last, must fail)", UNIFORM,
+                    env={"SSI263_UNIFORM_ORDER_BREAK": "android"}, expect_fail=True,
+                    fail_marks=[r"^ORDER  speakout:soundingboard is not listed right after speakout:speakout on "
+                                r"Android \(after it: mockingboard:mockingboard\)$", r"^ok +SAPI: ", r"^uniform: 1 gap$"]))
 SAPI_SERVE_TEST = os.path.join(os.path.dirname(os.path.dirname(HERE)), "sapi", "test_serve.py")
 CHECKS.append(check("SAPI pipe server", [PY, SAPI_SERVE_TEST]))
 # The three SAPI tests' reference server runs 0.7.0's Python drivers over this tree's chip (legacy_drivers.py: the

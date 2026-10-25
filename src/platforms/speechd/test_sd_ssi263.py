@@ -404,6 +404,9 @@ EXPECTED = [("Braille Lite 2000", "en-US", ("BL2ENG.BNS", "bl2_2003_warm.state")
             ("Accent SA", "en-US", tuple("aicom-accent-sa/" + f for f in FW_DIRS["aicom-accent-sa"])),
             ("Accent-mini", "en-US", ("aicom-accent-mini/SPKEMS.DVC",)),
             ("Speak-Out", "en-US", ("gw-micro-speakout/SPEAKOUT.HEX",)),
+            # 0.8.5's GW Micro Sounding Board, right under the Speak-Out (sd_voices.c), its two drivers in the data folder
+            ("Sounding Board (GW Micro)", "en-US", ("gw-micro-sounding-board/SBLOAD.COM",
+                                                    "gw-micro-sounding-board/SB.COM")),
             ("Mockingboard", "en-US", ("sweet-micro-mockingboard/mockingboard-tts-1.1.bin",)),
             ("Mockingboard, early", "en-US", ("sweet-micro-mockingboard/mockingboard-tts-early.bin",))]
 # 0.8: then the release table's Braille Lite voices (sd_voices.c SSV_BLAZIE_RELEASE_SD_ROWS, in the table's order),
@@ -412,10 +415,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 import gen_languages  # noqa: E402
 EXPECTED += [(r["vname"], r["tag"], ("bl2000/" + r["file"], "bl2000/%s.state" % r["id"]))
              for r in gen_languages.rows()[0] if r["voice"].startswith("blazie_")]
-# 0.8.5: then GW Micro's Sounding Board (sd_voices.c, last), its two drivers in the data folder
-EXPECTED += [("Sounding Board (GW Micro)", "en-US", ("gw-micro-sounding-board/SBLOAD.COM",
-                                                     "gw-micro-sounding-board/SB.COM"))]
-# then Automated Functions' SmarTalk (sd_voices.c, after it), its S_TALK.EXE in the data folder
+# then Automated Functions' SmarTalk (sd_voices.c, last), its S_TALK.EXE in the data folder
 EXPECTED += [("SmarTalk (Automated Functions)", "en-US", ("automated-functions-smartalk/S_TALK.EXE",))]
 want = ["200-%s\t%s\tMALE1" % (n, lang) for n, lang, files in EXPECTED
         if n in BUILT_NAMES and all(os.path.isfile(os.path.join(VDATA, f)) for f in files)] + ["249 OK VOICES LISTED"]

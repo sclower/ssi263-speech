@@ -41,9 +41,13 @@ A platform whose artifacts are not there is "skip <platform>: not built" -- a fa
     python tools/check_uniform.py [--require nvda,sapi,linux,android] [--sd-binary PATH] [--linux-conf PATH]
                                   [--sapi-stage DIR]
 
+And the order each platform lists them in: the Sounding Board right after the Speak-Out (FOLLOWS), in the NVDA
+driver's firmware list, SAPI's voices.txt, the Linux module's list and SsiEngine.kt's.
+
 Must-fail control: SSI263_UNIFORM_DROP=<platform>:<voice id>[:run-ahead|:numbers|:line-lift][,...] drops that voice (or that
 feature) from that platform's discovered list, after discovery -- e.g. android:speakout:speakout.  The run must then
-fail naming exactly that cell.  Exit 0: no gap; 1: a gap or a required platform skipped.  Stdlib only.
+fail naming exactly that cell.  SSI263_UNIFORM_ORDER_BREAK=<platform> moves the Sounding Board to the end of that
+platform's list: the run must fail naming that platform's order.  Exit 0: no gap; 1: a gap or a required platform skipped.  Stdlib only.
 """
 import argparse
 import ctypes
@@ -99,6 +103,7 @@ class Platform:
     def __init__(self, key):
         self.key, self.voices, self.features, self.source, self.skip, self.errors = key, {}, {}, "", None, []
         self.why_not = {}            # (id, feature) -> what was missing, for the report
+        self.order = []              # the ids in the order the platform lists them (FOLLOWS)
 
 
 # ---- the canonical list: voices.c's table --------------------------------------------------------------------------
@@ -230,6 +235,8 @@ if unified:      # the 0.8 driver: the unit voices its firmware types reach
     w = importlib.import_module("synthDrivers.ssi263")
     reach = {(t[1].SynthDriver.name, t[2][lang]) for fw, t in w.FIRMWARE_TYPES.items()
              for lang in w.present_languages(fw)}
+    print("ORDER " + json.dumps([t[1].SynthDriver.name + ":" + v for t in w.FIRMWARE_TYPES.values()
+                                 for v in t[2].values()]))
 for d in dirs:
     sub = os.path.join(d, "_ssi263_unified") if unified else d
     for f in sorted(os.listdir(sub)):
@@ -284,6 +291,8 @@ def nvda(voices, p):
             p.errors.append("the add-ons' drivers could not be read: %s" % (r.stderr.strip().splitlines() or ["?"])[-1])
             return
         drivers = json.loads(line[0][6:])
+        order = [ln for ln in r.stdout.splitlines() if ln.startswith("ORDER ")]
+        p.order = json.loads(order[0][6:]) if order else []          # the firmware list's order (FIRMWARE_TYPES)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     blazie = {v["id"] for v in voices if v["engine"] == "SSV_BLAZIE"}
@@ -345,6 +354,7 @@ def sapi(voices, p, stage=None):
     if set(listed) != set(native):
         p.errors.append("voices.txt lists %s, the stage's ssi263speech.dll can make %s" % (sorted(listed), sorted(native)))
     p.voices = {k: v for k, v in listed.items() if k in native}
+    p.order = [k for k in listed if k in native]                     # voices.txt's: the settings dialog's list
     dlls = [os.path.join(stage, a, "ssi263_sapi.dll") for a in ("x86", "x64")]
     blobs = [open(d, "rb").read() if os.path.isfile(d) else b"" for d in dlls]
     dialog = os.path.join(stage, "settings.ps1")
@@ -385,6 +395,7 @@ def linux(voices, p, binary=None, conf=None):
         for _engine, _lang, name in lines:
             if name in sd_ids:
                 p.voices[sd_ids[name]] = name
+                p.order.append(sd_ids[name])
             else:
                 p.errors.append("sd_ssi263 offers %r, which sd_voices.c's table does not name" % name)
         with open(binary, "rb") as f:
@@ -393,6 +404,7 @@ def linux(voices, p, binary=None, conf=None):
     else:
         built = built_from_sources(voices, os.path.join(REPO, "build_linux.sh"), "SD_DEFS")
         p.voices = {i: n for n, i in sd_ids.items() if i in built}
+        p.order = list(p.voices)                                     # the table's order, the module's
         p.source = "src/platforms/speechd/sd_voices.c + build_linux.sh's engines (no sd_ssi263 built here)"
     # the packaged conf: the built package's, else the one package_linux.sh writes
     if conf is None:
@@ -462,6 +474,17 @@ def android(voices, p):
         vid = ids[consts[const]] if consts[const] < len(ids) else None
         if vid in built:
             p.voices[vid] = name
+    # SsiEngine.kt's own order: SHIPPED's entries, a voice written out or named (a val holding its VoiceInfo), then
+    # AFTER_RELEASES' (the release voices between them are not written out)
+    named = dict(re.findall(r"val (\w+) =\s*VoiceInfo\(SsiNative\.(\w+),", engine_kt))
+    for listed in ("SHIPPED", "AFTER_RELEASES"):
+        m = re.search(r"val %s = listOf\((.*?)\)\r?\n\r?\n" % listed, engine_kt, re.S)
+        for one in re.finditer(r"VoiceInfo\(SsiNative\.(\w+),|\b(%s)\b" % "|".join(named or ["_"]),
+                               m.group(1) if m else ""):
+            const = one.group(1) or named.get(one.group(2))
+            vid = ids[consts[const]] if const in consts and consts[const] < len(ids) else None
+            if vid in p.voices:
+                p.order.append(vid)
     # the release voices: SsiEngine.kt lists them from FirmwareImport.releases, which SsiNative fills from the JNI's
     # nativeReleaseVoices -- ssa_jni.c's walk of SSA_RELEASE_FIRST .. SSA_VOICES -- never by hand
     jni_c = read(os.path.join(ANDROID, "cpp", "ssa_jni.c"))
@@ -516,6 +539,34 @@ def drop(found):
             p.voices.pop(vid, None)
         print("control: %s dropped from %s's discovered list" % (FEATURE_LABEL.get(feat, "") + " of " + vid if feat
                                                                    else vid, LABEL[plat]))
+
+
+# Voices every platform's list must show together, whatever their indexes (Tomi, 2026-10-25: "everywhere we are
+# listing all the firmware like that it's important that Speakout and Soundingboard are underneath each other"): the
+# second right after the first.  Control: SSI263_UNIFORM_ORDER_BREAK=<platform> moves the second to the end of that
+# platform's discovered order, where the lists after the release voices had it; the run must then fail naming it.
+FOLLOWS = [("speakout:speakout", "speakout:soundingboard")]
+
+
+def order_gaps(found):
+    broken = os.environ.get("SSI263_UNIFORM_ORDER_BREAK", "")
+    if broken and broken not in found:
+        raise SystemExit("uniform: SSI263_UNIFORM_ORDER_BREAK names no platform %r" % broken)
+    gaps = []
+    for k in PLATFORMS:
+        p = found[k]
+        for first, second in FOLLOWS:
+            if p.skip or first not in p.order or second not in p.order:
+                continue
+            if k == broken:
+                p.order = [v for v in p.order if v != second] + [second]
+                print("control: %s moved to the end of %s's list" % (second, LABEL[k]))
+            at = p.order.index(first)
+            after = p.order[at + 1] if at + 1 < len(p.order) else "nothing"
+            if after != second:
+                gaps.append((k, "ORDER  %s is not listed right after %s on %s (after it: %s)" % (
+                    second, first, LABEL[k], after)))
+    return gaps
 
 
 # Ports not done yet, each with why: printed "later" and listed, not counted as gaps -- except with --release, which
@@ -580,6 +631,7 @@ def main():
                     gaps.append((k, "MISSING  %s for %s [%s] on %s: %s" % (
                         FEATURE_LABEL[feat], label.split(": ", 1)[1], vid, LABEL[k], p.why_not.get((vid, feat), "?"))))
         print("%-*s%s" % (width, label, "".join("%-9s" % c for c in cells)))
+    ordered = order_gaps(found)
     for k in PLATFORMS:
         p = found[k]
         if p.skip:
@@ -592,6 +644,7 @@ def main():
                                                                                                   vid)))
         for e in p.errors:
             gaps.append((k, "FAIL  %s: %s" % (LABEL[k], e)))
+        gaps += [g for g in ordered if g[0] == k]
         lines.append("%s %s: %d of %d voices, from %s" % ("gap " if any(g[0] == k for g in gaps) else "ok  ",
                                                           LABEL[k], len(set(p.voices) & canon), len(canon), p.source))
     for ln in lines + later + [g[1] for g in gaps]:
@@ -600,7 +653,8 @@ def main():
         print("uniform: %d gap%s" % (len(gaps), "" if len(gaps) == 1 else "s"))
         return 1
     checked = [k for k in PLATFORMS if not found[k].skip]
-    print("uniform: every voice on %s, with the Braille Lite's run ahead and number words%s" % (
+    print("uniform: every voice on %s, with the Braille Lite's run ahead and number words, the Sounding Board listed "
+          "after the Speak-Out%s" % (
           ", ".join(LABEL[k] for k in checked), "; %d port%s pending (not for a release)" % (
               len(later), "" if len(later) == 1 else "s") if later else ""))
     return 0

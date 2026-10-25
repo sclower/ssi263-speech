@@ -105,6 +105,14 @@ $proc = [System.Diagnostics.Process]::Start($psi)
 $listing = $proc.StandardOutput.ReadToEnd()
 $proc.WaitForExit()
 if ($proc.ExitCode -or $listing -notmatch "`t") { throw "the native voices listed nothing from the stage's firmware" }
+# The Sounding Board right under the Speak-Out, whatever its place in the voice table (Tomi, 2026-10-25): the settings
+# dialog lists voices.txt in its order (tools/check_uniform.py FOLLOWS)
+$rows = @($listing -split "`r?`n" | Where-Object { $_ })
+$sb = @($rows | Where-Object { $_.StartsWith("speakout:soundingboard`t") })
+if ($sb -and @($rows | Where-Object { $_.StartsWith("speakout:speakout`t") })) {
+  $rows = @(foreach ($r in $rows) { if ($sb -notcontains $r) { $r; if ($r.StartsWith("speakout:speakout`t")) { $sb } } })
+  $listing = ($rows -join "`n") + "`n"
+}
 [System.IO.File]::WriteAllText((Join-Path $Stage "voices.txt"), $listing, (New-Object System.Text.UTF8Encoding($false)))
 # The licences: ours (MIT), Casso's (MIT) and each extracted MAME core's BSD notice with its provenance, as the
 # add-ons carry them (nvda/build_common.py); the 6502's; the Mockingboard firmware's notice.

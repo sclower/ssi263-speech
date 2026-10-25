@@ -18,12 +18,17 @@ object SsiEngine {
     init { loadNativeIfThere() }           // the release voices (FirmwareImport.releases) come with the library
 
     // The names are kept for good: TalkBack stores the one it was given.
+    private val SOUNDINGBOARD_VOICE =
+        VoiceInfo(SsiNative.SOUNDINGBOARD, "en-US-soundingboard", "GW Micro Sounding Board (English)", Locale("en", "US"))
     private val SHIPPED = listOf(
         VoiceInfo(SsiNative.ACCENT_SA, "en-US-accentsa", "Aicom Accent SA (English)", Locale("en", "US")),
         VoiceInfo(SsiNative.ACCENT_MINI, "en-US-accentmini", "Aicom Accent-mini (English)", Locale("en", "US")),
         VoiceInfo(SsiNative.ENGLISH, "en-US-braillelite", "Braille Lite 2000 (English)", Locale("en", "US")),
         VoiceInfo(SsiNative.SPANISH, "es-ES-braillelite", "Braille Lite 2000 (Spanish)", Locale("es", "ES")),
         VoiceInfo(SsiNative.SPEAKOUT, "en-US-speakout", "GW Micro Speak-Out (English)", Locale("en", "US")),
+        // GW Micro's Sounding Board, the Speak-Out's voice on the card's own DOS drivers (imported only), listed right
+        // under it whatever its index (SsiNative.SOUNDINGBOARD, after the release voices: Tomi, 2026-10-25)
+        SOUNDINGBOARD_VOICE,
         VoiceInfo(SsiNative.MOCKINGBOARD, "en-US-mockingboard", "Mockingboard (Sweet Micro Systems)",
                   Locale("en", "US")),
         VoiceInfo(SsiNative.MOCKINGBOARD_EARLY, "en-US-mockingboard-early", "Mockingboard, early (Sweet Micro Systems)",
@@ -37,15 +42,16 @@ object SsiEngine {
      * ("Braille Lite 2000 (Hungarian)"): its own name in its own script ("русский") is lost on whichever voice reads
      * the list -- the English Braille Lite said "Braille Lite radio button" (Tomi). */
     private val ALL: List<VoiceInfo>
-        get() = SHIPPED + FirmwareImport.releases.map { r ->
-            val locale = SsiLanguages.locale(r.tag)
-            VoiceInfo(r.voice, SsiLanguages.voiceTag(locale) + "-braillelite", "Braille Lite 2000 (${r.language})", locale)
-        } + AFTER_RELEASES
+        get() = (if (FirmwareImport.CONTROL == "voice-order") SHIPPED - SOUNDINGBOARD_VOICE else SHIPPED) +
+            FirmwareImport.releases.map { r ->
+                val locale = SsiLanguages.locale(r.tag)
+                VoiceInfo(r.voice, SsiLanguages.voiceTag(locale) + "-braillelite", "Braille Lite 2000 (${r.language})",
+                          locale)
+            } + (if (FirmwareImport.CONTROL == "voice-order") listOf(SOUNDINGBOARD_VOICE) else emptyList()) +
+            AFTER_RELEASES
 
-    /** The voices after the release table's (0.8.5): GW Micro's Sounding Board, imported only (its two drivers); then
-     * Automated Functions' SmarTalk, imported only (its S_TALK.EXE). */
+    /** The voices after the release table's: Automated Functions' SmarTalk, imported or built in (its S_TALK.EXE). */
     private val AFTER_RELEASES = listOf(
-        VoiceInfo(SsiNative.SOUNDINGBOARD, "en-US-soundingboard", "GW Micro Sounding Board (English)", Locale("en", "US")),
         VoiceInfo(SsiNative.SMARTALK, "en-US-smartalk", "SmarTalk (Automated Functions)", Locale("en", "US")))
 
     /** Every voice this app has, whether or not it can speak now (SsiLanguages: a language whose firmware is not here

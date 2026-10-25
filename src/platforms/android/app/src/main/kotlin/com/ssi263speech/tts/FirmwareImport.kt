@@ -63,9 +63,10 @@ object FirmwareImport {
                       MOCKINGBOARD_EARLY to listOf("mockingboard-tts-early.bin"),
                       SOUNDINGBOARD to listOf("SBLOAD.COM", "SB.COM"),
                       SMARTALK to listOf("S_TALK.EXE"))
-    /** The imported voices, in the order an import takes them. */
-    val IMPORTED = listOf(ENGLISH, SPANISH, GERMAN, ITALIAN, SLOVAK, SPEAKOUT, MOCKINGBOARD, MOCKINGBOARD_EARLY,
-                          SOUNDINGBOARD, SMARTALK)
+    /** The imported voices, in the order an import takes them and Settings lists them: the Sounding Board right
+     * after the Speak-Out (Tomi, 2026-10-25), whatever its index. */
+    val IMPORTED = listOf(ENGLISH, SPANISH, GERMAN, ITALIAN, SLOVAK, SPEAKOUT, SOUNDINGBOARD, MOCKINGBOARD,
+                          MOCKINGBOARD_EARLY, SMARTALK)
     /** The Blazie units: a state made from each one's firmware. */
     val BLAZIE = setOf(ENGLISH, SPANISH, GERMAN, ITALIAN, SLOVAK)
     /** The voices whose firmware is taken as it is, with no state to make. */
@@ -113,7 +114,8 @@ object FirmwareImport {
     fun bring(voice: Int): String? = release(voice)?.file ?: BRING[voice]
 
     /** Every imported voice, in the order an import takes them: [IMPORTED], then the release voices. */
-    fun imported(): List<Int> = if (CONTROL == "release") IMPORTED else IMPORTED + releases.map { it.voice }
+    fun imported(): List<Int> = (if (CONTROL == "voice-order") IMPORTED - SOUNDINGBOARD + SOUNDINGBOARD else IMPORTED) +
+        (if (CONTROL == "release") emptyList() else releases.map { it.voice })
 
     /** A Blazie unit, a state made from its firmware: [BLAZIE] and the release voices. */
     fun isBlazie(voice: Int) = voice in BLAZIE || release(voice) != null
@@ -126,8 +128,9 @@ object FirmwareImport {
      * the release voices out of the import, so their tests must fail; `units` drops a release no voice speaks (the
      * 640, Japanese) as before 0.8.5, so the unit screen's import tests must fail; `soundingboard` drops what the native
      * side says are the Sounding Board's two drivers, so its tests must fail; `smartalk` the same for the SmarTalk's
-     * S_TALK.EXE. */
-    private val CONTROL = System.getProperty("ssi263.import.break") ?: ""
+     * S_TALK.EXE; `voice-order` lists the Sounding Board after the release voices again, not under the Speak-Out
+     * (SsiEngine's voices, [imported]). */
+    internal val CONTROL = System.getProperty("ssi263.import.break") ?: ""
 
     const val STATE_SIZE = 786432           // battery-backed RAM + file flash: every state bl_save_state writes
     const val MAX_SOURCE = 64L shl 20       // an add-on is a few megabytes; firmware a few hundred kilobytes

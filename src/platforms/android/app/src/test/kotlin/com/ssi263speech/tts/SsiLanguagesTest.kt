@@ -107,6 +107,16 @@ class SsiLanguagesTest {
         assertEquals(known.size, known.map { it.name }.toSet().size)
     }
 
+    @Test fun theSoundingBoardIsListedRightUnderTheSpeakOut() {
+        // the voice list and Settings' firmware list, whatever the indexes (Tomi, 2026-10-25); the control
+        // -Pssi263ImportBreak=voice-order lists it after the release voices again
+        val voices = known.map { it.index }
+        assertEquals(SsiNative.SOUNDINGBOARD, voices[voices.indexOf(SsiNative.SPEAKOUT) + 1])
+        val imported = FirmwareImport.imported()
+        assertEquals(FirmwareImport.SOUNDINGBOARD, imported[imported.indexOf(FirmwareImport.SPEAKOUT) + 1])
+        assertEquals(SsiNative.SMARTALK, voices.last())
+    }
+
     // ---- the release voices (the library's table) --------------------------------------------------------------
 
     @Test fun aReleaseVoiceIsNamedByItsLocale() {

@@ -547,6 +547,12 @@ control "uniform CONTROL (Linux lacks the Spanish Braille Lite, must fail)" \
     "^gap +Linux: [0-9]+ of [0-9]+ voices, from build/linux/sd_ssi263 --voices" "^ok +Android: " "^uniform: 1 gap$" \
     -- env SSI263_UNIFORM_DROP=linux:blazie:blazie_es python3 tools/check_uniform.py --require linux,android \
     --sd-binary build/linux/sd_ssi263
+# ... and the module's order: the Sounding Board right under the Speak-Out (Tomi, 2026-10-25)
+control "uniform CONTROL (Linux lists the Sounding Board last, must fail)" \
+    "^ORDER  speakout:soundingboard is not listed right after speakout:speakout on Linux \(after it: mockingboard:mockingboard\)$" \
+    "^ok +Android: " "^uniform: 1 gap$" \
+    -- env SSI263_UNIFORM_ORDER_BREAK=linux python3 tools/check_uniform.py --require linux,android \
+    --sd-binary build/linux/sd_ssi263
 check "wheel for the audit" python3 python/build_wheel.py --lib-dir build/linux --plat "linux_$(uname -m)" \
     --out build/audit
 check "no z180emu or Unicorn engine, no GPL notice in what ships" python3 tools/check_no_gpl.py "$LIB" \

@@ -1859,6 +1859,11 @@ if os.path.isfile(os.path.join(os.path.dirname(HERE), "dist", "blazie-lib", "x64
         CHECKS.append(check("latch race CONTROL (the latch below the closest writes, must fail)",
                             [PY, os.path.join(BL_SRC, "test_latch_race.py")], env={"SSI263_LATCH_RACE_BREAK": "1"},
                             expect_fail=True, fail_marks=[r"^ok +speech ", r"^FAIL tones ", r"^latch race: 1 FAILED$"]))
+        # the edges every 1.90 us, the candidate Tomi heard tear (2026-10-24): the tones check must fail
+        CHECKS.append(check("latch race CONTROL (1.90 us edges, the tearing, must fail)",
+                            [PY, os.path.join(BL_SRC, "test_latch_race.py")], env={"SSI263_LATCH_RACE_BREAK": "edges190"},
+                            expect_fail=True, fail_marks=[r"^ok +params +Braille Lite 2000 ", r"^FAIL tones ",
+                                                          r"^latch race: 1 FAILED$"]))
     CHECKS.append(check("releases CONTROL (a release with no voice handed out as English, must fail)",
                         [PY, os.path.join(BL_SRC, "test_releases.py")], env={"SSI263_RELEASES_TEST_BREAK": "voice"},
                         expect_fail=True, fail_marks=[r"^FAIL no voice offered", r"^releases: 1 FAILED$"]))

@@ -81,9 +81,9 @@ int  bl_ccr(const bl_unit *u);
 void bl_set_double_speed(bl_unit *u, int on);
 int  bl_get_double_speed(const bl_unit *u);
 int  bl_double_speed_now(const bl_unit *u);
-/* The SSI-263's latch race, always on (BL_LATCH_RACE_US): the chip takes a register at the first edge of its own
-   clock after the write, and a write that comes before that edge also puts its value into the register written just
-   before it.  Measured on Tomi's Braille Lite 2000 (2026-10-16): at double speed BASIC's tones rumble, and the rumble
+/* The fitted model of a suspected latch race in the SSI-263, always on (BL_LATCH_RACE_US): the chip is modelled as
+   taking a register at the first edge of its own clock after the write, and a write that comes before that edge also
+   puts its value into the register written just before it.  Measured on Tomi's Braille Lite 2000 (2026-10-16): at double speed BASIC's tones rumble, and the rumble
    is a note's R4 holding 37, its R0's value, written 1.46 us later (regprog sessions: R4 = 37 at the base clock sounds
    the same).  Both times are fitted, not measured.  The edges come every BL_LATCH_RACE_US, fitted so that pinball
    sometimes froze, as on Tomi's unit; which of a note's writes they catch decides how it sounds, and Tomi heard

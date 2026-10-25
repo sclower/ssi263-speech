@@ -11,7 +11,8 @@ speed Braille Lite (2026-10-16).  The English Braille Lite 2000 from its warm st
             into R0, then R1, 1.953 us apart; caught, R0 kept R1's value and the chip held it as a vowel until a key
             (issue #25)
   tones     a BASIC program (below, run with Blazie's run.bns) playing 80 notes at double speed: writes caught, and
-            some notes' R4 holding 37
+            at least 20 notes' R4 holding 37 -- the 2.15 us edges' pattern Tomi approved (24 of 68 here); 1.90 us edges
+            catch other writes together (14), and he heard those notes tear (2026-10-24)
   base      the same program at the base clock: nothing caught, no R4 of 37
 The tone checks need run.bns (Blazie's BASIC runtime, from its 1995 BASIC disk) in the firmware folder's games/
 (never in the repo; absent, they are skipped) and blazie_files (the emulator's file tool) to put it and the program
@@ -19,7 +20,8 @@ into a state.
 
 Controls: SSI263_LATCH_RACE_BREAK=1, the latch time 1 us, below the closest writes -- nothing is caught, and "tones"
 must fail; SSI263_LATCH_RACE_BREAK=wide, every gap under the edges' 2.15 us caught, as before issue #25 -- "params"
-must fail.
+must fail; SSI263_LATCH_RACE_BREAK=edges190, the edges every 1.90 us (the candidate Tomi rejected) -- "tones" must
+fail.
 """
 import argparse
 import ctypes
@@ -35,6 +37,7 @@ REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 WINDOWS = sys.platform == "win32"
 BREAK = os.environ.get("SSI263_LATCH_RACE_BREAK") == "1"
 WIDE = os.environ.get("SSI263_LATCH_RACE_BREAK") == "wide"
+EDGES190 = os.environ.get("SSI263_LATCH_RACE_BREAK") == "edges190"
 RATE = 22050
 SPACE = 0x40
 STATUS, PLUS, YES, EXIT = 0x0C | SPACE, 0x2C, 0x3D, 0x11 | SPACE
@@ -233,10 +236,10 @@ def main():
         tmp = tempfile.mkdtemp(prefix="latch_race_")
         try:
             tst = td_state(a.files, a.firmware, st, run_bns, tmp)
-            notes, r4, caught = td_run(lib, fw, tst, 1, 1000 if BREAK else None)
-            report(caught > 0 and r4 >= 10 and notes >= 60,
-                   "tones    80 notes at double speed: %d played, %d writes caught, %d R4s of 37 (want some of each)"
-                   % (notes, caught, r4))
+            notes, r4, caught = td_run(lib, fw, tst, 1, 1000 if BREAK else 1900 if EDGES190 else None)
+            report(caught > 0 and r4 >= 20 and notes >= 60,
+                   "tones    80 notes at double speed: %d played, %d writes caught, %d R4s of 37 (want some caught, 20 or "
+                   "more R4s: 2.15 us edges give 24, 1.90 us edges 14)" % (notes, caught, r4))
             notes, r4, caught = td_run(lib, fw, tst, 0, None)
             report(caught == 0 and r4 == 0 and notes >= 60,
                    "base     at the base clock: %d played, %d caught, %d R4s of 37 (want none)" % (notes, caught, r4))

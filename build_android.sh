@@ -105,6 +105,12 @@ if [ "$MINI" = 1 ] && [ -f "$SRC/soundingboard/sb_host.c" ]; then
     SB=1
     HAVE="$HAVE -DSSV_HAVE_SOUNDINGBOARD -DSO_HAVE_SOUNDINGBOARD"
 fi
+# the SmarTalk: Automated Functions' S_TALK.EXE on the same pc86 (st_voice.h; imported, never staged)
+ST=0
+if [ "$MINI" = 1 ] && [ -f "$SRC/smartalk/st_voice.c" ]; then
+    ST=1
+    HAVE="$HAVE -DSSV_HAVE_SMARTALK"
+fi
 
 target() {
     case "$1" in
@@ -173,6 +179,11 @@ objects() {
     fi
     if [ "$SB" = 1 ]; then                           # the Sounding Board's host, on the same pc86
         cc --target="$TARGET" $ACCENT -I$SRC/pc86 -c -o "$O/sb_host.o" "$SRC/soundingboard/sb_host.c"
+    fi
+    if [ "$ST" = 1 ]; then                           # the SmarTalk's host and voice, on the same pc86
+        for f in st_host st_voice; do
+            cc --target="$TARGET" $FRONT -I$SRC/cpu -I$SRC/pc86 -c -o "$O/$f.o" "$SRC/smartalk/$f.c"
+        done
     fi
     # The Mockingboard (the 6502, src/csrc/mockingboard's board, host and voice, and the disk reader the import uses),
     # when its sources are in the tree

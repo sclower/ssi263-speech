@@ -38,7 +38,9 @@ object SsiNative {
     const val VOICES = 27                   // ssa_engine.h's SSA_VOICES: the release voices end below it (10 + 17)
     const val SOUNDINGBOARD = 27            // ssa_engine.h's SSA_SOUNDINGBOARD: GW Micro's Sounding Board (imported;
                                             // 0.8.5), after the release voices so no saved voice moves
-    const val ALL_VOICES = 28               // ssa_engine.h's SSA_ALL_VOICES: every index is below it
+    const val SMARTALK = 28                 // ssa_engine.h's SSA_SMARTALK: Automated Functions' SmarTalk (imported),
+                                            // after the Sounding Board
+    const val ALL_VOICES = 29               // ssa_engine.h's SSA_ALL_VOICES: every index is below it
 
     /** Open the engine on the folder holding the unit's files (once per process; later calls keep it). */
     external fun nativeOpen(dataDir: String): Boolean

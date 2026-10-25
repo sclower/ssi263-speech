@@ -42,9 +42,11 @@ object SsiEngine {
             VoiceInfo(r.voice, SsiLanguages.voiceTag(locale) + "-braillelite", "Braille Lite 2000 (${r.language})", locale)
         } + AFTER_RELEASES
 
-    /** The voices after the release table's (0.8.5): GW Micro's Sounding Board, imported only (its two drivers). */
+    /** The voices after the release table's (0.8.5): GW Micro's Sounding Board, imported only (its two drivers); then
+     * Automated Functions' SmarTalk, imported only (its S_TALK.EXE). */
     private val AFTER_RELEASES = listOf(
-        VoiceInfo(SsiNative.SOUNDINGBOARD, "en-US-soundingboard", "GW Micro Sounding Board (English)", Locale("en", "US")))
+        VoiceInfo(SsiNative.SOUNDINGBOARD, "en-US-soundingboard", "GW Micro Sounding Board (English)", Locale("en", "US")),
+        VoiceInfo(SsiNative.SMARTALK, "en-US-smartalk", "SmarTalk (Automated Functions)", Locale("en", "US")))
 
     /** Every voice this app has, whether or not it can speak now (SsiLanguages: a language whose firmware is not here
      * is missing data, not unsupported). */

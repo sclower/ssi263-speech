@@ -20,6 +20,9 @@
 #ifdef SSV_HAVE_MOCKINGBOARD
 #include "mockingboard/mb_voice.h"
 #endif
+#ifdef SSV_HAVE_SMARTALK
+#include "smartalk/st_voice.h"         /* stv_step */
+#endif
 #include "ssa_engine.h"
 #include "ssa_map.h"
 
@@ -49,12 +52,15 @@ static const voice_def VOICES[SSA_RELEASE_FIRST] = {
 /* the voices after the release table's (ssa_engine.h, 0.8.5), from SSA_VOICES */
 static const voice_def AFTER_RELEASES[SSA_ALL_VOICES - SSA_VOICES] = {
     {"speakout:soundingboard", {SSA_SBLOAD_FILE, SSA_SB_FILE, NULL}},
+    {"smartalk:smartalk", {SSA_SMARTALK_FILE, NULL}},
 };
 static const size_t ROM_SIZES[3] = {0x10000, 0x8000, 0x8000};
 
-/* ssa_engine.h's count of the release voices is the generated table's, and the Sounding Board comes right after them */
+/* ssa_engine.h's count of the release voices is the generated table's, the Sounding Board comes right after them and
+   the SmarTalk after it */
 typedef char release_voices_match[SSA_RELEASE_VOICES == SSV_BLAZIE_RELEASE_VOICES ? 1 : -1];
 typedef char soundingboard_after_releases[SSA_SOUNDINGBOARD == SSA_VOICES ? 1 : -1];
+typedef char smartalk_after_soundingboard[SSA_SMARTALK == SSA_SOUNDINGBOARD + 1 ? 1 : -1];
 
 static int after_releases(int voice) { return voice >= SSA_VOICES && voice < SSA_ALL_VOICES; }
 
@@ -276,6 +282,13 @@ static void settings_for(const ssa_engine *e, int voice, const ssa_settings *s, 
         *offset = ssa_mockingboard_pitch(s->pitch, ssa_voice_break == 5 ? 100 : request_pitch) - o->pitch;
         o->numbers = s->numbers && ssa_voice_break != 6;
         break;
+    case SSA_SMARTALK:                 /* as the Mockingboard, with the TSR's ten pitch steps for the capital's move;
+                                          its tone the TSR's own (I), its inflection the app's (the Accents') */
+        o->pitch = clamp100(s->pitch);
+        *offset = ssa_smartalk_pitch(s->pitch, ssa_voice_break == 11 ? 100 : request_pitch) - o->pitch;
+        o->inflection = e->inflection ? 100 : 0;
+        o->numbers = s->numbers && ssa_voice_break != 12;
+        break;
     }
 }
 
@@ -285,6 +298,15 @@ int ssa_mockingboard_pitch(int slider, int request)
 {
 #ifdef SSV_HAVE_MOCKINGBOARD
     return ssa_step_pitch(slider, request, mbv_pitch_step);
+#else
+    return ssa_pitch(slider, request);
+#endif
+}
+
+int ssa_smartalk_pitch(int slider, int request)
+{
+#ifdef SSV_HAVE_SMARTALK
+    return ssa_step_pitch(slider, request, stv_step);
 #else
     return ssa_pitch(slider, request);
 #endif

@@ -30,6 +30,7 @@ object FirmwareImport {
     const val SOUNDINGBOARD = 27            // GW Micro's Sounding Board (SsiNative.SOUNDINGBOARD; 0.8.5): two files --
     const val SB_LOAD = 90                  // ... SBLOAD.COM (ssa_import.h SSA_FW_SBLOAD), and
     const val SB_COM = 91                   // ... SB.COM (SSA_FW_SB): found apart, imported only together
+    const val SMARTALK = 28                 // Automated Functions' SmarTalk (SsiNative.SMARTALK): its S_TALK.EXE
     const val NONE = -1                     // no firmware in the bytes
     const val REFUSED = -2                  // Blazie firmware, but another unit's: not one the voice can run
     const val UNKNOWN = -4                  // Braille Lite 2000 firmware, but not a release on the list
@@ -60,14 +61,15 @@ object FirmwareImport {
                       SPEAKOUT to listOf("SPEAKOUT.HEX"),
                       MOCKINGBOARD to listOf("mockingboard-tts-1.1.bin"),
                       MOCKINGBOARD_EARLY to listOf("mockingboard-tts-early.bin"),
-                      SOUNDINGBOARD to listOf("SBLOAD.COM", "SB.COM"))
+                      SOUNDINGBOARD to listOf("SBLOAD.COM", "SB.COM"),
+                      SMARTALK to listOf("S_TALK.EXE"))
     /** The imported voices, in the order an import takes them. */
     val IMPORTED = listOf(ENGLISH, SPANISH, GERMAN, ITALIAN, SLOVAK, SPEAKOUT, MOCKINGBOARD, MOCKINGBOARD_EARLY,
-                          SOUNDINGBOARD)
+                          SOUNDINGBOARD, SMARTALK)
     /** The Blazie units: a state made from each one's firmware. */
     val BLAZIE = setOf(ENGLISH, SPANISH, GERMAN, ITALIAN, SLOVAK)
     /** The voices whose firmware is taken as it is, with no state to make. */
-    val NO_STATE = setOf(SPEAKOUT, MOCKINGBOARD, MOCKINGBOARD_EARLY, SOUNDINGBOARD)
+    val NO_STATE = setOf(SPEAKOUT, MOCKINGBOARD, MOCKINGBOARD_EARLY, SOUNDINGBOARD, SMARTALK)
     /** A voice of two files (the Sounding Board's drivers): each file's code, in [FILES]' order. */
     val PARTS = mapOf(SOUNDINGBOARD to listOf(SB_LOAD, SB_COM))
     const val SOUNDINGBOARD_LABEL = "GW Micro Sounding Board 2.7: SBLOAD.COM and SB.COM"
@@ -104,7 +106,8 @@ object FirmwareImport {
                               ITALIAN to "Lite2000.BNS (Italian)", SLOVAK to "BS2SLL.BNS", SPEAKOUT to "SPEAKOUT.HEX",
                               MOCKINGBOARD to "the Mockingboard Developers Toolkit disk",
                               MOCKINGBOARD_EARLY to "Mockingboard disk 1",
-                              SOUNDINGBOARD to "GW Micro's sb.zip (SBLOAD.COM and SB.COM)")
+                              SOUNDINGBOARD to "GW Micro's sb.zip (SBLOAD.COM and SB.COM)",
+                              SMARTALK to "S_TALK.EXE")
 
     fun bring(voice: Int): String? = release(voice)?.file ?: BRING[voice]
 
@@ -121,7 +124,8 @@ object FirmwareImport {
      * Speak-Out's, so the Speak-Out tests must fail; `mockingboard` the same for the Mockingboard's; `release` leaves
      * the release voices out of the import, so their tests must fail; `units` drops a release no voice speaks (the
      * 640, Japanese) as before 0.8.5, so the unit screen's import tests must fail; `soundingboard` drops what the native
-     * side says are the Sounding Board's two drivers, so its tests must fail. */
+     * side says are the Sounding Board's two drivers, so its tests must fail; `smartalk` the same for the SmarTalk's
+     * S_TALK.EXE. */
     private val CONTROL = System.getProperty("ssi263.import.break") ?: ""
 
     const val STATE_SIZE = 786432           // battery-backed RAM + file flash: every state bl_save_state writes
@@ -170,7 +174,8 @@ object FirmwareImport {
     fun languageName(language: Int) = release(language)?.language ?: when (language) {
         SPANISH -> "Spanish"; GERMAN -> "German"; ITALIAN -> "Italian"; SLOVAK -> "Slovak"
         SPEAKOUT -> "Speak-Out"; MOCKINGBOARD -> "Mockingboard"
-        MOCKINGBOARD_EARLY -> "early Mockingboard"; SOUNDINGBOARD -> "Sounding Board"; else -> "English" }
+        MOCKINGBOARD_EARLY -> "early Mockingboard"; SOUNDINGBOARD -> "Sounding Board"; SMARTALK -> "SmarTalk"
+        else -> "English" }
 
     /** The unit's name in words: "German Braille Lite", "Slovak Braille 'n Speak 2000", a release voice's as the
      * table names it ("Braille Lite 2000 (Hungarian)"); the Speak-Out and the Mockingboards by their own. */
@@ -257,7 +262,8 @@ object FirmwareImport {
             val (language, text) = id.firmware(bytes, out).let {
                 if ((CONTROL == "speakout" && it.first == SPEAKOUT) ||
                     (CONTROL == "mockingboard" && it.first in BUILT_IN) ||
-                    (CONTROL == "soundingboard" && it.first in PARTS.getValue(SOUNDINGBOARD))) NONE to "" else it
+                    (CONTROL == "soundingboard" && it.first in PARTS.getValue(SOUNDINGBOARD)) ||
+                    (CONTROL == "smartalk" && it.first == SMARTALK)) NONE to "" else it
             }
             when {
                 isUnitRelease(language) -> {

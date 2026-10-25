@@ -103,6 +103,13 @@ It takes:
   voice, **GW Micro Sounding Board (English)**, is the Speak-Out's voice on the card's own drivers (`sb_host.h` on the
   Accent-mini's 8086), listed only once both are imported. It sits right after the release voices
   (`SSA_SOUNDINGBOARD`, 27), so no voice saved before it moves; a release voice added to the table later would move it.
+- Automated Functions' SmarTalk: its `S_TALK.EXE` 1.21, known by its sha256 (`ssa_import_smartalk`), from the
+  SmarTalk's disk or the NVDA add-on, which carries it (`_ssi263_smartalk/`). The voice, **SmarTalk (Automated
+  Functions)**, is the box's own DOS text-to-speech on the Accent-mini's 8086 (`smartalk/st_voice.h`), after the
+  Sounding Board (`SSA_SMARTALK`, 28). Its makers let the program be shared, and the repository and the add-on carry
+  it, but the APK does not: the app carries no one's firmware (its audit refuses the file by sha256). The sliders
+  set its rate, pitch and volume, the Inflection switch its inflection, and "Read numbers as words" its number
+  words; its tone is the TSR's own, I.
 
 ### The Mockingboards: Sweet Micro's text-to-speech, one file each
 
@@ -276,6 +283,7 @@ shipped in the APK. The Setup page's "Licenses and source" shows them all and po
     SSI263_ANDROID_TEST_BREAK=speakout-pitch|speakout-settings|run-ahead|import-hash ...  # the 0.7.5 ones: must FAIL
     SSI263_ANDROID_TEST_BREAK=mockingboard-pitch|mockingboard-numbers|import-dsk ...      # the Mockingboards': must FAIL
     SSI263_ANDROID_TEST_BREAK=mockingboard-import-ignored|mockingboard-builtin-ignored|mockingboard-variant ...
+    SSI263_ANDROID_TEST_BREAK=smartalk-pitch|smartalk-numbers|import-st ...              # the SmarTalk's: must FAIL
     python src/platforms/android/test/test_volume_headroom.py              # the default volume, every voice
     python src/platforms/android/test/test_device_service.py [--rate 2.0] [--aloud]
                                   [--voice accent|braillelite|speakout|accentmini|mockingboard|both|all]
@@ -290,6 +298,7 @@ shipped in the APK. The Setup page's "Licenses and source" shows them all and po
     ./gradlew testDebugUnitTest -Pssi263ImportBreak=release               # control: the release voices' cases must FAIL
     ./gradlew testDebugUnitTest -Pssi263ImportBreak=units                 # control: the unit screen's releases must FAIL
     ./gradlew testDebugUnitTest -Pssi263ImportBreak=soundingboard         # control: the Sounding Board's cases must FAIL
+    ./gradlew testDebugUnitTest -Pssi263ImportBreak=smartalk              # control: the SmarTalk's cases must FAIL
     ./gradlew testDebugUnitTest -Pssi263ImportBreak=export                # control: the exported WAV's case must FAIL
     ./gradlew testDebugUnitTest -Pssi263ImportBreak=unopened              # control: a zip in a zip dropped in silence: must FAIL
 

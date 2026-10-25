@@ -77,7 +77,10 @@ typedef struct ssa_engine ssa_engine;
    index): GW Micro's Sounding Board, the Speak-Out's voice on the card's DOS drivers SBLOAD.COM and SB.COM (2.7),
    imported.  Its index is SSA_VOICES (checked when compiled): a release voice added to the table moves it. */
 #define SSA_SOUNDINGBOARD 27
-#define SSA_ALL_VOICES (SSA_SOUNDINGBOARD + 1)
+/* Automated Functions' SmarTalk: its own DOS text-to-speech, S_TALK.EXE 1.21, on the Accent-mini's 8086 (st_voice.h),
+   imported -- right after the Sounding Board, so no voice saved before it moves (checked when compiled). */
+#define SSA_SMARTALK 28
+#define SSA_ALL_VOICES (SSA_SMARTALK + 1)
 /* A release voice's row in the release table (bl_firmware.h blv_release_*), or -1; and back: a row's voice, or -1
    (a release that names no new voice: a shipped voice's, or the emulator's only). */
 int ssa_voice_release(int voice);
@@ -93,6 +96,7 @@ int ssa_voice_file(int voice, int i, char *out, int cap);
 #define SSA_SB_FILE "SB.COM"
 #define SSA_MOCKINGBOARD_FILE "mockingboard-tts-1.1.bin"
 #define SSA_MOCKINGBOARD_EARLY_FILE "mockingboard-tts-early.bin"
+#define SSA_SMARTALK_FILE "S_TALK.EXE"
 
 /* The Accents' level at the app's volume 100, in their drivers' percent (as_voice.h's asv_set): the engine volume
    times this over 100.  test_volume_headroom.py measures it against the Braille Lite's. */
@@ -192,6 +196,8 @@ int ssa_accent_pitch(int slider, int request);         /* ssa_step_pitch with th
 int ssa_speakout_pitch(int slider, int request);       /* ... with the Speak-Out's */
 int ssa_mockingboard_pitch(int slider, int request);   /* ... with the Mockingboard's inflection (0-26), in a build
                                                           that has it; else the plain mapping */
+int ssa_smartalk_pitch(int slider, int request);       /* ... with the SmarTalk's ten (ESC P 0-9), in a build that has
+                                                          it; else the plain mapping */
 
 /* The tests' controls (test_android_native.c sets them; the app never does): each puts back one bug the cases must
    catch.  ssa_accent_break -- 1: the request's pitch dropped; 2: the pitch sent as a setting, so it glides instead of
@@ -203,7 +209,8 @@ int ssa_mockingboard_pitch(int slider, int request);   /* ... with the Mockingbo
    Mockingboard's request pitch dropped (no capital offset); 6: the Mockingboard's number words dropped (always off);
    7: a Mockingboard's imported copy ignored (the built-in one always used); 8: the built-in copies ignored (import
    only); 9: ssa_set_mockingboard takes any file for either voice (no mbh_variant check); 10: the Braille Lite's
-   line-start lift dropped. */
+   line-start lift dropped; 11: the SmarTalk's request pitch dropped (no capital offset); 12: the SmarTalk's number
+   words dropped (always off). */
 extern int ssa_accent_break;
 extern int ssa_voice_break;
 

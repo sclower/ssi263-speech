@@ -7,6 +7,7 @@
 #include "mockingboard/mb_host.h"      /* MB_SHA256 */
 #include "mockingboard/mb_dsk.h"       /* mb_firmware_from_dsk, MB_DSK_SIZE */
 #include "soundingboard/sb_host.h"     /* SBH_SBLOAD_SHA256, SBH_SB_SHA256 */
+#include "smartalk/st_host.h"          /* STH_SHA256 */
 #include "ssa_engine.h"                /* ssa_voice_built */
 #include "ssa_import.h"
 
@@ -76,6 +77,35 @@ int ssa_import_soundingboard(const unsigned char *data, long n, const char *out,
     }
     snprintf(msg, (size_t)msglen, "%s", which == SSA_FW_SBLOAD ? SSA_SBLOAD_LABEL : SSA_SB_LABEL);
     return which;
+}
+
+int ssa_import_smartalk(const unsigned char *data, long n, const char *out, char *msg, int msglen)
+{
+    static const char HEXD[] = "0123456789abcdef";
+    unsigned char digest[32];
+    char got[65];
+    int i;
+    FILE *f;
+    if (!data || n <= 0 || n > 65536)                  /* S_TALK.EXE is 36,882 bytes */
+        return BLV_FW_NONE;
+    blv_sha256(data, n, digest);
+    for (i = 0; i < 32; i++) {
+        got[2 * i] = HEXD[digest[i] >> 4];
+        got[2 * i + 1] = HEXD[digest[i] & 15];
+    }
+    got[64] = 0;
+    if (strcmp(got, STH_SHA256) || ssa_import_break == 7)  /* the control: never known (ssa_import.h) */
+        return BLV_FW_NONE;
+    if (out) {
+        if (!(f = fopen(out, "wb")) || fwrite(data, 1, (size_t)n, f) != (size_t)n) {
+            if (f) fclose(f);
+            remove(out);
+            return fail(msg, msglen, BLV_FW_WRITE, "could not write the SmarTalk's S_TALK.EXE");
+        }
+        fclose(f);
+    }
+    snprintf(msg, (size_t)msglen, "%s", SSA_SMARTALK_LABEL);
+    return SSA_SMARTALK;
 }
 
 int ssa_import_speakout(const unsigned char *data, long n, const char *out, char *msg, int msglen)
@@ -274,6 +304,8 @@ int ssa_import_firmware(const unsigned char *data, long n, const char *out, char
         r = ssa_import_mockingboard(data, n, out, msg, msglen);
     if (r == BLV_FW_NONE && ssa_voice_built(SSA_SOUNDINGBOARD))  /* the Sounding Board's two drivers (0.8.5) */
         r = ssa_import_soundingboard(data, n, out, msg, msglen);
+    if (r == BLV_FW_NONE && ssa_voice_built(SSA_SMARTALK))       /* the SmarTalk's S_TALK.EXE */
+        r = ssa_import_smartalk(data, n, out, msg, msglen);
     if (r == BLV_FW_NONE)
         return ssa_import_speakout(data, n, out, msg, msglen);
     if (r != SSA_FW_MB_DISK)

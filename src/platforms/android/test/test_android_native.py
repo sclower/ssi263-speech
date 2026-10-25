@@ -86,12 +86,16 @@ ssa_map.c and ssa_import.c, on the same chip, boards, hosts and voices), every c
                                                   0.8.5 (the unit screen's imports fail: Japanese, the 640s)
                              import-sb            ssa_import_break 6: the Sounding Board's drivers never known (its
                                                   imports fail)
+                             import-st            ssa_import_break 7: the SmarTalk's S_TALK.EXE never known (its
+                                                  import fails)
+                             smartalk-pitch       ssa_voice_break 11: the SmarTalk's request pitch dropped
+                             smartalk-numbers     ssa_voice_break 12: its number words dropped (always off)
 
 SSI263_ANDROID_TEST_ONLY=<blocks>, a comma list of bl (the Braille Lite in lockstep, its Spanish unit and the probe),
 ra (run ahead), lift (the line-start lift), num (the number words), lang (0.8's German, Italian and Slovak units),
 rel (the release voices),
 accent (the Accent SA and its text), so (the Speak-Out), mini (the
-Accent-mini), mb (the Mockingboard), import (the Speak-Out's and the Mockingboard's import): only those blocks, on
+Accent-mini), mb (the Mockingboard), st (the SmarTalk), import (every import case): only those blocks, on
 both sides -- for the controls, so each runs what
 its bug touches (the 3-minute gate).
 
@@ -173,6 +177,8 @@ MINI_DVC = os.path.join(REPO, "firmware", "aicom-accent-mini", "SPKEMS.DVC")
 # the Mockingboards' files: local copies (never committed), imported here as the app's data folder has them, and the
 # same folder handed over as the built-in copies (the APK's assets/sweet-micro)
 MB_BUILTIN = os.path.join(REPO, "firmware", "sweet-micro-mockingboard")
+# the SmarTalk's TSR: in the repository under its own notice (never in the APK), so its cases always run
+ST_EXE = os.path.join(REPO, "firmware", "automated-functions-smartalk", "S_TALK.EXE")
 MB_BIN = os.path.join(MB_BUILTIN, "mockingboard-tts-1.1.bin")
 MB_BIN_EARLY = os.path.join(MB_BUILTIN, "mockingboard-tts-early.bin")
 MB_SHA256 = "88e1e90f1e76b7afa2f370db3c3bf34892c9621b5360304359242570b41bdfae"    # mb_host.h's MB_SHA256
@@ -241,6 +247,27 @@ MB_CASES = [
     ("mb-after-stop", "Next message.", 50, 50, 100, 100, 100, 1, 22050, 4096, 0),
     ("mb-volume-150", HELLO_MB, 50, 50, 100, 100, 150, 1, 22050, 4096, 0),
     ("mb-11k", HELLO_MB, 50, 50, 100, 100, 100, 1, 11025, 4096, 0),
+]
+
+# The SmarTalk's cases: test_android_native.c's st_cases, in the same order, as the Mockingboard's.  One unit across
+# them, as the app keeps one.
+HELLO_ST = "Hello there. This is the SmarTalk, speaking on a phone."
+ST_CASES = [
+    ("st-default", HELLO_ST, 50, 50, 100, 100, 100, 1, 22050, 4096, 0),
+    ("st-default-97", HELLO_ST, 50, 50, 100, 100, 100, 1, 22050, 97, 0),
+    ("st-fast", HELLO_ST, 50, 50, 200, 100, 100, 1, 22050, 4096, 0),
+    ("st-sliders", HELLO_ST, 70, 80, 100, 100, 100, 1, 22050, 4096, 0),
+    ("st-pitch-100", "B", 50, 50, 100, 100, 100, 1, 22050, 4096, 0),
+    ("st-pitch-150", "B", 50, 50, 100, 150, 100, 1, 22050, 4096, 0),
+    ("st-pitch-75", "B", 50, 50, 100, 75, 100, 1, 22050, 4096, 0),
+    ("st-pitch-120", "B", 50, 50, 100, 120, 100, 1, 22050, 4096, 0),
+    ("st-pitch-100-again", "B", 50, 50, 100, 100, 100, 1, 22050, 4096, 0),
+    ("st-num", NUM_TEXTS["en"], 50, 50, 100, 100, 100, 1, 22050, 4096, 0),
+    ("st-num-off", NUM_TEXTS["en"], 50, 50, 100, 100, 100, 0, 22050, 4096, 0),
+    ("st-stopped", LONG, 50, 50, 100, 100, 100, 1, 22050, 4096, 8),
+    ("st-after-stop", "Next message.", 50, 50, 100, 100, 100, 1, 22050, 4096, 0),
+    ("st-volume-150", HELLO_ST, 50, 50, 100, 100, 150, 1, 22050, 4096, 0),
+    ("st-11k", HELLO_ST, 50, 50, 100, 100, 100, 1, 11025, 4096, 0),
 ]
 
 # The Accent SA's cases: test_android_native.c's accent_cases, in the same order -- (name, text, the app's rate and
@@ -572,6 +599,59 @@ def mb_reference(exe, data, cases=None, prefix="mb"):
     return parse(out.stdout)
 
 
+# ---- the SmarTalk's reference: st_voice driven directly ----------------------------------------------------------
+def st_step(p):                                     # st_voice.c's stv_step: the TSR's pitch digit 0-9 (50 = 5)
+    p = max(0, min(100, p))
+    return int(p * 5 / 50.0 + 0.5) if p <= 50 else 5 + int((p - 50) * 4 / 50.0 + 0.5)
+
+
+def st_reference(exe, cases=None):
+    """The app's mapping, computed here as the Mockingboard's: the request's rate on the slider, the slider's pitch as
+    the setting and the request's as a capital's offset, moved at least one of the TSR's ten steps; the TSR's own
+    tone (I, 8) and its inflection on (the app's Inflection, on by default)."""
+    lines = []
+    for name, text, rate, pitch, rr, rp, volume, numbers, sr, chunk, stop in cases or ST_CASES:
+        slider = max(0, min(100, pitch))
+        lines.append("%s %d %d %d 8 %d 1 %d %d %d %s\n" % (name, sr, on_top(rate, rr), slider, volume, numbers,
+                                                          step_pitch(pitch, rp, st_step) - slider, stop,
+                                                          text.encode("utf-8").hex()))
+    out = subprocess.run([exe, "--st-direct", ST_EXE], input="".join(lines), capture_output=True, text=True)
+    if out.returncode:
+        sys.exit("test_android_native --st-direct failed (%d): %s" % (out.returncode, out.stderr.strip()))
+    return parse(out.stdout)
+
+
+def st_heard(label, got):
+    """The SmarTalk's capitals (one kept unit, checked as the Mockingboard's) and its number words: on and off sound
+    different."""
+    bad = capitals(label, got, "st")
+    on, off = got.get("st-num"), got.get("st-num-off")
+    ok = on is not None and off is not None and on[1] != off[1]
+    print("%-5s %-8s st-num differs from st-num-off (the number words heard)" % ("ok" if ok else "FAIL", label))
+    return bad + (not ok)
+
+
+def st_import_cases(exe, tmp):
+    """The SmarTalk's S_TALK.EXE known by its sha256 (SSA_SMARTALK, 28) and written as it came; one byte changed, not"""
+    bad = 0
+    out = os.path.join(tmp, "st.out")
+    data = open(ST_EXE, "rb").read()
+    for label, b, code in (("S_TALK.EXE", data, 28), ("S_TALK.EXE, one byte changed", data[:100] +
+                                                      bytes([data[100] ^ 1]) + data[101:], None)):
+        src = os.path.join(tmp, "st.in")
+        open(src, "wb").write(b)
+        if os.path.exists(out):
+            os.remove(out)
+        r = subprocess.run([exe, "--import", src, out], capture_output=True, text=True)
+        m = re.match(r"^import (-?\d+) (.*)$", r.stdout.strip())
+        got = int(m.group(1)) if m else None
+        ok = got == code and open(out, "rb").read() == data if code is not None else bool(m) and got != 28
+        print("%-5s import   %s (the SmarTalk's): %s" % ("ok" if ok else "FAIL", label,
+                                                         m.group(0) if m else r.stdout + r.stderr))
+        bad += not ok
+    return bad
+
+
 def mb_voices():
     """The Mockingboard voices whose file is here: [(the file, the cases' prefix, ssa_engine.h's index)]."""
     return [(f, p, v) for f, p, v in ((MB_BIN, "mb", 5), (MB_BIN_EARLY, "mbe", 6)) if os.path.isfile(f)]
@@ -895,6 +975,10 @@ def build_into(exe):
             units += [(am, os.path.join(SRC, "soundingboard", "sb_host.c"))]
             units = [(flags + ["-DSO_HAVE_SOUNDINGBOARD"], s) if s.endswith(os.path.join("speakout", "so_voice.c"))
                      else (flags, s) for flags, s in units]
+        if os.path.isfile(os.path.join(SRC, "smartalk", "st_voice.c")):        # the SmarTalk, on the same pc86
+            have.append("-DSSV_HAVE_SMARTALK")
+            st = front + ["-I" + os.path.join(SRC, "cpu"), "-I" + os.path.join(SRC, "pc86")]
+            units += [(st, os.path.join(SRC, "smartalk", n + ".c")) for n in ("st_host", "st_voice")]
     if os.path.isfile(os.path.join(SRC, "mockingboard", "mb_voice.c")):
         have.append("-DSSV_HAVE_MOCKINGBOARD")
         mb = ["-O2", "-std=gnu99", "-ffp-contract=off", "-w", "-I" + os.path.join(SRC, "cpu"),
@@ -984,7 +1068,7 @@ def data_folder(firmware, tmp):
     Speak-Out's HEX and the Mockingboard's file when they are in the repository's firmware folder)."""
     for f in FILES["en"]:
         shutil.copy2(os.path.join(firmware, f), tmp)
-    for f in (SPEAKOUT_HEX, MB_BIN, MB_BIN_EARLY):
+    for f in (SPEAKOUT_HEX, MB_BIN, MB_BIN_EARLY, ST_EXE):
         if os.path.isfile(f):
             shutil.copy2(f, tmp)
     for d in (firmware, os.path.join(firmware, "spanish")):
@@ -1056,7 +1140,7 @@ def capitals(label, got, p="a"):
         ok = got.get(name) is not None and got.get(name)[1] != (got.get(other) or (0, None))[1]
         print("%-5s %-8s %s sounds different from %s" % ("ok" if ok else "FAIL", label, name, other))
         bad += not ok
-    if p in ("s", "mb", "mbe"):
+    if p in ("s", "mb", "mbe", "st"):
         return bad
     ok = base is not None and base == again
     print("%-5s %-8s %s-pitch-100-again = %s-pitch-100, byte for byte (the pitch came back)" % (
@@ -1206,6 +1290,14 @@ def main():
         mb = bool(mb_voices())
         if mb and block("mb"):
             want.update(mb_want(exe))
+        smartalk = os.path.isfile(ST_EXE)
+        if smartalk and block("st"):
+            want.update(st_reference(exe))
+            # ssa_probe on the SmarTalk: a fresh unit says the import's "Hello." at the defaults
+            want["st-probe"] = st_reference(exe, [("st-probe", "Hello.", 50, 50, 100, 100, 100, 1, 22050, 4096,
+                                                   0)])["st-probe"]
+        elif not smartalk:
+            print("skip  the SmarTalk: no firmware/automated-functions-smartalk/S_TALK.EXE")
         for f, what in ((MB_BIN, "Mockingboard"), (MB_BIN_EARLY, "early Mockingboard")):
             if not os.path.isfile(f):
                 print("skip  the %s: no firmware/sweet-micro-mockingboard/%s" % (what, os.path.basename(f)))
@@ -1226,6 +1318,8 @@ def main():
                 bad += mini_capitals(label, got)
             if mb and block("mb"):
                 bad += mb_heard(label, got, got.get("_out", ""))
+            if smartalk and block("st"):
+                bad += st_heard(label, got)
             if block("rel"):
                 bad += release_heard(label, data, got)
             return bad
@@ -1240,6 +1334,8 @@ def main():
             bad += import_cases(exe, data)
         if all(os.path.isfile(os.path.join(SB_DIR, f)) for f in ("SBLOAD.COM", "SB.COM")) and block("import"):
             bad += sb_import_cases(exe, data)
+        if os.path.isfile(ST_EXE) and block("import"):
+            bad += st_import_cases(exe, data)
         if (mb or any(mb_disks())) and block("import"):
             bad += mb_import_cases(exe, data)
         if a.adb:

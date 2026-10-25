@@ -1273,7 +1273,17 @@ if os.path.isfile(ANDROID_TEST):
              [r"^FAIL +import +SBLOAD\.COM \(the Sounding Board's\): import -1 ",
               r"^FAIL +import +SB\.COM \(the Sounding Board's\): import -1 ",
               r"^ok +import +SB\.COM, one byte changed \(the Sounding Board's\)",
-              r"^FAILED: 2 case\(s\) differ$"]),) if ANDROID_SB else ()) + ((
+              r"^FAILED: 2 case\(s\) differ$"]),) if ANDROID_SB else ()) + (
+            # the SmarTalk (its S_TALK.EXE is in the repository, so these always run): never known; a capital's pitch
+            # dropped; its number words dropped
+            ("import-st", "SmarTalk import: its S_TALK.EXE never known",
+             [r"^FAIL +import +S_TALK\.EXE \(the SmarTalk's\): import -1 ",
+              r"^ok +import +S_TALK\.EXE, one byte changed \(the SmarTalk's\)", r"^FAILED: 1 case\(s\) differ$"]),
+            ("smartalk-pitch", "SmarTalk: the request's pitch dropped",
+             [r"^FAIL +desktop +st-pitch-150 +got ", r"^ok +desktop +st-pitch-100 ", r"^FAILED: 9 case\(s\) differ$"]),
+            ("smartalk-numbers", "SmarTalk: number words dropped",
+             [r"^FAIL +desktop +st-num +got ", r"^ok +desktop +st-default ", r"^FAILED: 5 case\(s\) differ$"]),
+            ) + ((
             ("numbers", "Braille Lite: number words dropped",
              [r"^FAIL +desktop +num-en +got ", r"^FAIL +desktop +num-es +got ", r"^ok +desktop +num-en-off ",
               r"^FAIL +desktop +num-en differs from num-en-off", r"^FAILED: 4 case\(s\) differ$"]),) if ANDROID_NUM
@@ -1317,7 +1327,8 @@ if os.path.isfile(ANDROID_TEST):
         only = {"1": "bl,accent", "accent-pitch": "accent,mini", "run-ahead": "bl,ra", "line-lift": "bl,lift",
                 "numbers": "num",
                 "speakout-pitch": "so", "speakout-settings": "so", "import-hash": "import", "import-dsk": "import",
-                "import-lang": "import", "import-release": "import", "import-units": "import", "import-sb": "import"}.get(
+                "import-lang": "import", "import-release": "import", "import-units": "import", "import-sb": "import",
+                "import-st": "import", "smartalk-pitch": "st", "smartalk-numbers": "st"}.get(
                     brk, "mb" if brk.startswith("mockingboard-") else "accent")
         CHECKS.append(check("Android engine CONTROL (%s, must fail)" % what, [PY, ANDROID_TEST],
                             env={"SSI263_ANDROID_TEST_BREAK": brk, "SSI263_ANDROID_TEST_ONLY": only}, expect_fail=True,

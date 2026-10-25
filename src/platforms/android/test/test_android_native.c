@@ -31,6 +31,12 @@
  *                                           one, made again at a new sample rate; stdin: "<name> <sample rate> <rate>
  *                                           <pitch> <volume> <numbers> <pitch offset> <blocks before a cancel>
  *                                           <text, hex>" per case
+ *     test_android_native --st-direct <S_TALK.EXE>
+ *                                           the SmarTalk's reference: st_voice driven directly (stv_create, stv_set,
+ *                                           stv_speak, stv_render, stv_cancel), one unit as the app keeps one, made
+ *                                           again at a new sample rate; stdin: "<name> <sample rate> <rate> <pitch>
+ *                                           <tone> <volume> <inflection> <numbers> <pitch offset> <blocks before a
+ *                                           cancel> <text, hex>" per case
  *     test_android_native --import <file> <out>
  *                                           the import's judgement (ssa_import_voice, as nativeImportFirmware):
  *                                           "import <code> <message>"
@@ -41,8 +47,9 @@
  * mapping (ssa_map.h), so the "fast" cases must differ; accent-pitch, accent-glide, accent-reuse and accent-step are
  * ssa_engine.h's ssa_accent_break 1, 2, 3 and 4; speakout-pitch, speakout-settings, run-ahead, numbers,
  * mockingboard-pitch, mockingboard-numbers, mockingboard-import-ignored, mockingboard-builtin-ignored and
- * mockingboard-variant its ssa_voice_break 1 to 9; import-hash, import-dsk, import-lang, import-release, import-units and import-sb
- * ssa_import.h's ssa_import_break 1, 2, 3 and 4.
+ * mockingboard-variant its ssa_voice_break 1 to 9, line-lift, smartalk-pitch and smartalk-numbers its 10, 11 and 12;
+ * import-hash, import-dsk, import-lang, import-release, import-units, import-sb and import-st ssa_import.h's
+ * ssa_import_break 1 to 7.
  *
  * Built by the desktop compiler (test_android_native.py) and by build_android.sh --test (static, for a device).
  */
@@ -57,6 +64,7 @@
 #include "speakout/so_voice.h"
 #include "accentmini/am_voice.h"
 #include "mockingboard/mb_voice.h"
+#include "smartalk/st_voice.h"
 #include "blazie/bl_firmware.h"
 #include "blazie/bl_state.h"
 
@@ -697,6 +705,115 @@ static int mb_direct(const char *file)
 }
 
 /* --import: the import's judgement on a file, as the app's nativeImportFirmware gives it */
+/* ---- the SmarTalk (imported): one unit kept across the cases, as the app keeps it -------------------------------- */
+
+static const char *HELLO_ST = "Hello there. This is the SmarTalk, speaking on a phone.";
+
+/* test_android_native.py's ST_CASES, in the same order: as the Mockingboard's (mb_case) */
+static const mb_case *st_cases(int *n)
+{
+    static mb_case c[24];
+    int k = 0;
+#define B(nm, tx, r, p, rr, rp, v, nu, sr, ch, st) \
+    do { mb_case x = {nm, tx, r, p, rr, rp, v, nu, sr, ch, st}; c[k++] = x; } while (0)
+    B("st-default", HELLO_ST, 50, 50, 100, 100, 100, 1, 22050, 4096, 0);
+    B("st-default-97", HELLO_ST, 50, 50, 100, 100, 100, 1, 22050, 97, 0);
+    B("st-fast", HELLO_ST, 50, 50, 200, 100, 100, 1, 22050, 4096, 0);
+    B("st-sliders", HELLO_ST, 70, 80, 100, 100, 100, 1, 22050, 4096, 0);
+    B("st-pitch-100", "B", 50, 50, 100, 100, 100, 1, 22050, 4096, 0);
+    B("st-pitch-150", "B", 50, 50, 100, 150, 100, 1, 22050, 4096, 0);
+    B("st-pitch-75", "B", 50, 50, 100, 75, 100, 1, 22050, 4096, 0);
+    B("st-pitch-120", "B", 50, 50, 100, 120, 100, 1, 22050, 4096, 0);
+    B("st-pitch-100-again", "B", 50, 50, 100, 100, 100, 1, 22050, 4096, 0);
+    B("st-num", NUM_EN, 50, 50, 100, 100, 100, 1, 22050, 4096, 0);
+    B("st-num-off", NUM_EN, 50, 50, 100, 100, 100, 0, 22050, 4096, 0);
+    B("st-stopped", LONG, 50, 50, 100, 100, 100, 1, 22050, 4096, 8);
+    B("st-after-stop", "Next message.", 50, 50, 100, 100, 100, 1, 22050, 4096, 0);
+    B("st-volume-150", HELLO_ST, 50, 50, 100, 100, 150, 1, 22050, 4096, 0);
+    B("st-11k", HELLO_ST, 50, 50, 100, 100, 100, 1, 11025, 4096, 0);
+#undef B
+    *n = k;
+    return c;
+}
+
+/* The SmarTalk's cases, its S_TALK.EXE imported in the data folder */
+static int smartalk(const char *data)
+{
+    ssa_engine *e = ssa_new(data);
+    const mb_case *c;
+    char err[256];
+    digest d;
+    int n, i, rc = 0;
+    if (!e) return 1;
+    if (!ssa_has_voice(e, SSA_SMARTALK)) { ssa_free(e); return 0; }   /* no S_TALK.EXE: no cases (said by the .py) */
+    c = st_cases(&n);
+    for (i = 0; i < n && !rc; i++) {
+        ssa_settings s;
+        ssa_default_settings(&s);
+        s.rate = c[i].rate; s.pitch = c[i].pitch; s.volume = c[i].volume; s.numbers = c[i].numbers;
+        ssa_configure(e, c[i].sample_rate, 1, 0);
+        if (ssa_load(e, SSA_SMARTALK, err, sizeof err) != 0) { fprintf(stderr, "boot: %s\n", err); rc = 1; break; }
+        if (speak(e, SSA_SMARTALK, c[i].text, &s, c[i].req_rate, c[i].req_pitch, c[i].chunk, c[i].stop, &d))
+            rc = 1;
+        else
+            report(c[i].name, &d);
+    }
+    ssa_free(e);
+    return rc;
+}
+
+static int st_direct(const char *file)
+{
+    char line[16384], name[64], texthex[8192], text[4096], err[256];
+    st_voice *v = NULL;
+    int cur_rate = 0;
+    size_t fn = 0;
+    unsigned char *exe = slurp(".", file, &fn);
+    if (!exe) {                              /* an absolute path: slurp joins it to "." */
+        FILE *f = fopen(file, "rb");
+        long len;
+        if (f) {
+            fseek(f, 0, SEEK_END); len = ftell(f); fseek(f, 0, SEEK_SET);
+            exe = (unsigned char *)malloc(len > 0 ? (size_t)len : 1);
+            fn = exe ? fread(exe, 1, (size_t)len, f) : 0;
+            fclose(f);
+        }
+    }
+    if (!exe) { fprintf(stderr, "cannot read %s\n", file); return 1; }
+    while (fgets(line, sizeof line, stdin)) {
+        int sr, rate, pitch, tone, volume, infl, numbers, offset, stop, done = 0, blocks = 0, n;
+        const short *pcm;
+        digest d = {1469598103934665603ULL, 0};
+        texthex[0] = 0;
+        if (sscanf(line, "%63s %d %d %d %d %d %d %d %d %d %8191s", name, &sr, &rate, &pitch, &tone, &volume, &infl,
+                   &numbers, &offset, &stop, texthex) < 10)
+            continue;
+        unhex(texthex, text, sizeof text);
+        if (!v || sr != cur_rate) {          /* the app boots a new unit at a new sample rate (ssa_configure) */
+            stv_destroy(v);
+            v = stv_create(exe, fn, (double)sr, err, sizeof err);
+            if (!v) { fprintf(stderr, "stv_create: %s\n", err); free(exe); return 1; }
+            cur_rate = sr;
+        }
+        stv_set(v, rate, pitch, tone, volume, infl, numbers);
+        if (stv_speak(v, text, offset) > 0)
+            while (!done) {
+                n = stv_render(v, &pcm, &done);
+                if (n > 0) {
+                    add(&d, pcm, n);
+                    if (stop > 0 && ++blocks == stop && !done) {
+                        stv_cancel(v);
+                        break;
+                    }
+                }
+            }
+        report(name, &d);
+    }
+    stv_destroy(v);
+    free(exe);
+    return 0;
+}
+
 static int import(const char *file, const char *out)
 {
     size_t n;
@@ -739,16 +856,19 @@ int main(int argc, char **argv)
                     : !strcmp(brk, "run-ahead") ? 3 : !strcmp(brk, "numbers") ? 4
                     : !strcmp(brk, "mockingboard-pitch") ? 5 : !strcmp(brk, "mockingboard-numbers") ? 6
                     : !strcmp(brk, "mockingboard-import-ignored") ? 7 : !strcmp(brk, "mockingboard-builtin-ignored") ? 8
-                    : !strcmp(brk, "mockingboard-variant") ? 9 : !strcmp(brk, "line-lift") ? 10 : 0;
+                    : !strcmp(brk, "mockingboard-variant") ? 9 : !strcmp(brk, "line-lift") ? 10
+                    : !strcmp(brk, "smartalk-pitch") ? 11 : !strcmp(brk, "smartalk-numbers") ? 12 : 0;
     ssa_import_break = !brk ? 0 : !strcmp(brk, "import-hash") ? 1 : !strcmp(brk, "import-dsk") ? 2
                      : !strcmp(brk, "import-lang") ? 3 : !strcmp(brk, "import-release") ? 4
-                     : !strcmp(brk, "import-units") ? 5 : !strcmp(brk, "import-sb") ? 6 : 0;
+                     : !strcmp(brk, "import-units") ? 5 : !strcmp(brk, "import-sb") ? 6
+                     : !strcmp(brk, "import-st") ? 7 : 0;
     if (argc >= 2 && !strcmp(argv[1], "--texts")) return texts();
     if (argc >= 6 && !strcmp(argv[1], "--level"))
         return level(argv[2], argv[3], atoi(argv[4]), atoi(argv[5]), argc >= 7 ? argv[6] : NULL);
     if (argc >= 3 && !strcmp(argv[1], "--so-direct")) return so_direct(argv[2]);
     if (argc >= 3 && !strcmp(argv[1], "--am-direct")) return am_direct(argv[2]);
     if (argc >= 3 && !strcmp(argv[1], "--mb-direct")) return mb_direct(argv[2]);
+    if (argc >= 3 && !strcmp(argv[1], "--st-direct")) return st_direct(argv[2]);
     if (argc >= 4 && !strcmp(argv[1], "--import")) return import(argv[2], argv[3]);
     if (argc < 2) { fprintf(stderr, "usage: test_android_native <data folder> [<aicom folder>] | --texts\n"); return 2; }
     if (argc >= 3 && block("accent") && accent(argv[2])) return 1;
@@ -757,6 +877,7 @@ int main(int argc, char **argv)
     if (block("mb") && (mockingboard(argv[1], SSA_MOCKINGBOARD) || mockingboard(argv[1], SSA_MOCKINGBOARD_EARLY)))
         return 1;
     if (argc >= 5 && block("mb") && mockingboard_builtin(argv[1], argv[4])) return 1;
+    if (block("st") && smartalk(argv[1])) return 1;
     /* the mapping itself: Android 100% is the slider; a doubling is SSIP 50 */
     if (ssa_rate(50, 100) != 50 || ssa_pitch(50, 50) != 25 || ssa_pitch(50, 400) != 100
             || ssa_ssip_from_percent(200) != 50 || ssa_to100(-100) != 0) {
@@ -934,6 +1055,19 @@ int main(int argc, char **argv)
                 if (n <= 0) { fprintf(stderr, "Mockingboard probe: %ld %s\n", n, err); return 1; }
                 printf("%s %ld %016llx\n", names[k], n, h);
             }
+        }
+    }
+    if (block("st")) {                       /* the SmarTalk's import check: its "Hello." on a unit of its own */
+        unsigned long long h;
+        long n;
+        int has;
+        e = ssa_new(argv[1]);
+        has = e && ssa_has_voice(e, SSA_SMARTALK);
+        ssa_free(e);
+        if (has) {
+            n = ssa_probe(argv[1], SSA_SMARTALK, "Hello.", &h, err, sizeof err);
+            if (n <= 0) { fprintf(stderr, "SmarTalk probe: %ld %s\n", n, err); return 1; }
+            printf("st-probe %ld %016llx\n", n, h);
         }
     }
     return 0;

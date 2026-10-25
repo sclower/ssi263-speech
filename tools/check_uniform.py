@@ -524,7 +524,6 @@ def drop(found):
 PENDING = {
     ("smartalk:smartalk", "sapi"): "the SmarTalk (PR 24) is NVDA's only, until it is ported",
     ("smartalk:smartalk", "linux"): "the SmarTalk (PR 24) is NVDA's only, until it is ported",
-    ("smartalk:smartalk", "android"): "the SmarTalk (PR 24) is NVDA's only, until it is ported",
 }
 
 

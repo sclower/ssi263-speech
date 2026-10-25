@@ -105,6 +105,10 @@ class FirmwareImportTest {
                 out.writeBytes(data)
                 return FirmwareImport.SB_COM to "GW Micro Sounding Board 2.7: SB.COM"
             }
+            if (String(data, 0, minOf(10, data.size), Charsets.ISO_8859_1) == "SMARTALKEX") {   // by sha256 there
+                out.writeBytes(data)
+                return FirmwareImport.SMARTALK to "SmarTalk: Automated Functions' S_TALK.EXE 1.21"
+            }
             if (String(data, 0, minOf(10, data.size), Charsets.ISO_8859_1) == "SWEETMICRO") {
                 out.writeBytes(data)
                 return FirmwareImport.MOCKINGBOARD to "Mockingboard: Sweet Micro Systems' text-to-speech 1.1"
@@ -562,6 +566,33 @@ class FirmwareImportTest {
         assertTrue(plan.found.isEmpty())
         assertTrue(plan.refusal!!, plan.refusal!!.contains("the Sounding Board's SB.COM, but its SBLOAD.COM is needed " +
                                                            "too (both are in GW Micro's sb.zip)"))
+    }
+
+    // ---- Automated Functions' SmarTalk: S_TALK.EXE, one file, from its disk or the NVDA add-on that carries it --------
+
+    private val sTalk = "SMARTALKEX".toByteArray() + ByteArray(2500) { (it * 13).toByte() }
+
+    @Test fun theSmarTalksExeIsItsVoice() {
+        val plan = inspect("S_TALK.EXE", sTalk)
+        assertNull(plan.refusal)
+        val f = plan.found.single()
+        assertEquals(FirmwareImport.SMARTALK, f.language)
+        assertEquals(sTalk.toList(), f.firmware.readBytes().toList())
+        assertEquals(listOf("S_TALK.EXE"), FirmwareImport.files(f.language))
+        assertTrue(f.language in FirmwareImport.NO_STATE)
+    }
+
+    @Test fun theAddOnBringsTheSmarTalkItCarries() {
+        // the add-on carries S_TALK.EXE beside the SmarTalk's driver (nvda/build_ssi263.py stage_smartalk), with its
+        // notice: one import brings it with the Speak-Out
+        val u = "synthDrivers/_ssi263_unified/"
+        val plan = inspect("ssi263-speech.nvda-addon", zip("manifest.ini" to "name = ssi263".toByteArray(),
+            u + "_ssi263_speakout/SPEAKOUT.HEX" to hex(true), u + "_ssi263_smartalk/S_TALK.EXE" to sTalk,
+            u + "_ssi263_smartalk/licenses/SmarTalk-software-notice.txt" to "Copyright 1995".toByteArray()))
+        assertNull(plan.refusal)
+        assertEquals(setOf(FirmwareImport.SPEAKOUT, FirmwareImport.SMARTALK), languages(plan).toSet())
+        assertEquals(sTalk.toList(), plan.found.single { it.language == FirmwareImport.SMARTALK }.firmware.readBytes()
+            .toList())
     }
 
     // ---- the unit screen's releases (0.8.5: no voice speaks them -- the 640, Japanese -- kept under units/) ----------

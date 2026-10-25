@@ -21,8 +21,8 @@ settings:
     # Mac target gets the team's wildcard profile, and macOS then refuses the extension the group's container
     # ("Requestor's signature does not allow it to access a TCC-protected group container")
     REGISTER_APP_GROUPS: YES
-    MARKETING_VERSION: "0.8.5"
-    CURRENT_PROJECT_VERSION: "6"
+    MARKETING_VERSION: "0.9.0"
+    CURRENT_PROJECT_VERSION: "7"
     SWIFT_OBJC_BRIDGING_HEADER: shared/BridgingHeader.h
     HEADER_SEARCH_PATHS:
       - $(PROJECT_DIR)/core

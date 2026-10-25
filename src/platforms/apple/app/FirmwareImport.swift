@@ -59,9 +59,10 @@ enum FirmwareImport {
     static let stateFiles: [Int: String] = [english: "bl2_2003_warm.state", spanish: "bl2spa_fresh.state",
                                             german: "lite2000_de_fresh.state", italian: "lite2000_it_fresh.state",
                                             slovak: "bs2sll_fresh.state"]
-    /// The order an import takes them in (Android's IMPORTED, then Aicom's).
-    static let order = [english, spanish, german, italian, slovak, speakout, mockingboard, mockingboardEarly,
-                        soundingboard, smartalk, accentU2, accentU3, accentU4, accentMini]
+    /// The order an import takes them in (Android's IMPORTED, with the Sounding Board after the Speak-Out as Setup lists
+    /// them, then Aicom's).
+    static let order = [english, spanish, german, italian, slovak, speakout, soundingboard, mockingboard,
+                        mockingboardEarly, smartalk, accentU2, accentU3, accentU4, accentMini]
     /// The Blazie units: a state made from each one's firmware.
     static let blazie: Set<Int> = [english, spanish, german, italian, slovak]
     static let accentRoms = [accentU2, accentU3, accentU4]

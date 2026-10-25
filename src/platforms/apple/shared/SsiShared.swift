@@ -62,9 +62,20 @@ enum SsiShared {
     private static let english = ["en-US"]
     private static let spanish = ["es-ES"]
 
-    /// Every voice the app knows, in the order the app lists them (ssa_engine.h's indexes): the shipped voices, the
-    /// release voices, then the voices after them (0.8.5).
-    static let voices: [Voice] = shipped + releaseVoices() + afterReleases
+    /// Every voice the app knows, in the order the app lists them: the shipped voices, the release voices, then the
+    /// voices after them (0.8.5) -- but the Sounding Board right after the Speak-Out, GW Micro's two sharing their
+    /// front end, as the NVDA driver lists them (Tomi, 2026-10-25). The indexes, and so every saved voice, stay
+    /// ssa_engine.h's.
+    static let voices: [Voice] = listed(shipped + releaseVoices() + afterReleases)
+
+    private static func listed(_ all: [Voice]) -> [Voice] {
+        var list = all.filter { $0.key != "soundingboard" }
+        if let sb = all.first(where: { $0.key == "soundingboard" }),
+           let so = list.firstIndex(where: { $0.key == "speakout" }) {
+            list.insert(sb, at: so + 1)
+        }
+        return list
+    }
 
     private static let shipped: [Voice] = [
         Voice(index: 0, key: "braillelite", name: "Braille Lite 2000", short: "Braille Lite 2000", locales: english,

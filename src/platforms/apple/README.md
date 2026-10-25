@@ -30,7 +30,7 @@ moves (`ssa_engine.h`'s `SSA_SOUNDINGBOARD`, 27 of 29): GW Micro's Sounding Boar
 card's own DOS drivers (`src/csrc/soundingboard`, on the Accent-mini's pc86), imported from `sb.zip`, from the 0.8.5
 add-on (`_ssi263_speakout/`, beside the Speak-Out's HEX) or as its `SBLOAD.COM` and `SB.COM` chosen together (several
 loose files are judged as one source): the voice needs both, so one alone is refused with why. It is always shown in
-the firmware list, and takes the Speak-Out's settings. After it (0.9.0, `SSA_SMARTALK`, 28 of 29): Automated
+the firmware list, listed right under the Speak-Out as the NVDA driver lists it (its index unchanged), and takes the Speak-Out's settings. After it (0.9.0, `SSA_SMARTALK`, 28 of 29): Automated
 Functions' SmarTalk, its own DOS text-to-speech `S_TALK.EXE` 1.21 on the same pc86 (`src/csrc/smartalk`), known by its
 sha256 alone (`ssa_import_smartalk`) and imported as the file, from the disk's zip or from any zip or add-on holding
 it; the app never carries it (the Android APK does), and `check_archive_no_firmware.py` refuses it by its sha256.

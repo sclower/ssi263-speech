@@ -24,6 +24,13 @@ do {
     let ok = indexes == Array(0..<Int(SSA_ALL_VOICES)) && SsiShared.voices.last?.key == "smartalk"
     print("\(ok ? "ok   " : "FAIL ") every voice of the library is the app's, once: \(indexes.count) of \(SSA_ALL_VOICES)")
     if !ok { failures += 1 }
+    // listed as the NVDA driver lists them: GW Micro's Sounding Board right under the Speak-Out, its index unchanged
+    let keys = SsiShared.voices.map { $0.key }
+    let gw = keys.firstIndex(of: "speakout").map { keys.indices.contains($0 + 1) && keys[$0 + 1] == "soundingboard" }
+    let sb = SsiShared.voices.first { $0.key == "soundingboard" }?.index == SSA_SOUNDINGBOARD
+    print("\(gw == true && sb ? "ok   " : "FAIL ") the Sounding Board listed under the Speak-Out, still voice " +
+          "\(SSA_SOUNDINGBOARD)")
+    if !(gw == true && sb) { failures += 1 }
 }
 
 func run(_ label: String, _ files: [String], expect: [String], kept: [String] = [], from base: URL? = nil) {

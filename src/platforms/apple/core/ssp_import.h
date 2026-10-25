@@ -28,7 +28,8 @@ extern "C" {
 const char *ssp_aicom_file(int found);
 
 /* The SmarTalk's S_TALK.EXE 1.21 as ssa_import_firmware knows it: its sha256 in hex (st_host.h's STH_SHA256), for
-   Setup to say which copy to bring (ssa_import_firmware returns SSA_SMARTALK for it). */
+   the import to say which copy to bring when another file of its name is chosen (ssa_import_firmware returns
+   SSA_SMARTALK for this one). */
 const char *ssp_smartalk_sha256(void);
 
 /* Judges data: Aicom's files by their sha256 first (written to out exactly, their label in msg), then

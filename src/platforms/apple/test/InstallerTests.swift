@@ -98,14 +98,14 @@ if var changed = try? Data(contentsOf: sbCom) {
 // Automated Functions' SmarTalk (0.9.0): the repository's S_TALK.EXE alone, then a zip holding it where the NVDA
 // add-on does (checked to speak by the commit); a copy with one byte changed is refused
 let stExe = repo.appendingPathComponent("firmware/automated-functions-smartalk/S_TALK.EXE")
+// the repository's file's sha256 and size: Setup's row says the size, the import's words for another copy both
+var stWhich = ""
 if let exe = try? Data(contentsOf: stExe) {
-    // Setup names the copy to bring by the library's sha256 and the size its row says: the repository's file's
     var d = [UInt8](repeating: 0, count: 32)
     exe.withUnsafeBytes { blv_sha256($0.bindMemory(to: UInt8.self).baseAddress, exe.count, &d) }
-    let hex = d.map { String(format: "%02x", $0) }.joined()
-    let size = SsiShared.voices.first { $0.key == "smartalk" }?.bring.contains("(\(exe.count.formatted()) bytes)")
-    let ok = hex == String(cString: ssp_smartalk_sha256()) && size == true
-    print("\(ok ? "ok   " : "FAIL ") the SmarTalk's sha256 and size, as Setup says them: \(hex), \(exe.count) bytes")
+    stWhich = "(\(exe.count.formatted()) bytes, SHA-256 \(d.map { String(format: "%02x", $0) }.joined()))"
+    let ok = SsiShared.voices.first { $0.key == "smartalk" }?.bring.contains("(\(exe.count.formatted()) bytes)") == true
+    print("\(ok ? "ok   " : "FAIL ") the SmarTalk's size, as Setup's row says it: \(exe.count) bytes")
     if !ok { failures += 1 }
 }
 run("the SmarTalk's S_TALK.EXE", ["automated-functions-smartalk/S_TALK.EXE"], expect: ["smartalk"],
@@ -131,7 +131,8 @@ if var changed = try? Data(contentsOf: stExe) {
     let copy = root.appendingPathComponent("changed/S_TALK.EXE")
     try? FileManager.default.createDirectory(at: copy.deletingLastPathComponent(), withIntermediateDirectories: true)
     try? changed.write(to: copy)
-    refuses("S_TALK.EXE with one byte changed", [copy], "does not contain")
+    refuses("S_TALK.EXE with one byte changed: the copy it runs named", [copy],
+            "S_TALK.EXE is not the SmarTalk's S_TALK.EXE 1.21, the copy this voice runs " + stWhich + ".")
 }
 
 // the confirmation's words (Android's): a language update takes a few seconds, and one already here is replaced;

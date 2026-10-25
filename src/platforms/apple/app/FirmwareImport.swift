@@ -97,13 +97,24 @@ enum FirmwareImport {
             "and import it or the zip around it again."
     }
     static let onlyTheHex = "Only GW Micro's SPEAKOUT.HEX, as it came, can be imported for the Speak-Out."
+    /// A file called S_TALK.EXE that is not the copy the SmarTalk runs: which one is, by its size and sha256 -- said
+    /// only here, at the import (Tomi, 2026-10-25: Setup's list names files, a hash read there every time is a wall).
+    /// The name only words this; the firmware itself is found by its content alone.
+    static func notTheSmarTalk(_ sha256: String) -> String {
+        "not the SmarTalk's S_TALK.EXE 1.21, the copy this voice runs (36,882 bytes, SHA-256 \(sha256))"
+    }
+    /// The file's own name, from a `from` (a path in a zip, or "outer.zip, its/path" for a zip in it).
+    static func baseName(_ from: String) -> String {
+        String(from.split(separator: "/").last.map { $0.split(separator: ",").last ?? $0 } ?? Substring(from))
+            .trimmingCharacters(in: .whitespaces)
+    }
 
     /// The host-side tests' controls (SSI263_IMPORT_BREAK; never set in the app): `1` looks at a zip's top only -- no
     /// folder below it -- so the folder tests must fail; `unopened` drops a zip inside a zip in the source in silence;
     /// `state` stops knowing a state file;
     /// `speakout` drops what the native side says is the Speak-Out's; `mockingboard` both Mockingboards'; `accent`
     /// drops Aicom's files; `release` the releases with no shipped voice; `soundingboard` the Sounding Board's two
-    /// drivers; `smartalk` the SmarTalk's S_TALK.EXE.
+    /// drivers; `smartalk` the SmarTalk's S_TALK.EXE; `smartalkname` the words for another file called S_TALK.EXE.
     static var control = ProcessInfo.processInfo.environment["SSI263_IMPORT_BREAK"] ?? ""
 
     /// What the native side says about some bytes: the app's NativeIdentify, a fake in the tests.
@@ -115,6 +126,9 @@ enum FirmwareImport {
         func known() -> [String]
         /// A release found as `release` + its row: the table's words for it (blv_release_*).
         func release(_ row: Int) -> Release?
+        /// The sha256 (hex) of the one S_TALK.EXE the SmarTalk runs (ssp_smartalk_sha256), for the words when another
+        /// file of its name is chosen.
+        func smartalkSha256() -> String
     }
 
     /// A release with no shipped voice, as the table has it.
@@ -303,7 +317,10 @@ enum FirmwareImport {
                 kind = FirmwareImport.none
                 text = ""
             }
-            if kind >= 0 {
+            if kind == FirmwareImport.none && control != "smartalkname"
+                && baseName(from).uppercased() == "S_TALK.EXE" {
+                withReason.append((from, notTheSmarTalk(id.smartalkSha256())))  // another copy or version of it
+            } else if kind >= 0 {
                 firmware.append(Candidate(kind: kind, from: from, file: out, label: text))
             } else if kind == FirmwareImport.refused {
                 refused.append(from)

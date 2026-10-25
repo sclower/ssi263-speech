@@ -212,6 +212,9 @@ struct Fake: FirmwareImport.Identify {
         default: return nil
         }
     }
+
+    func smartalkSha256() -> String { Fake.smartalkSha256 }
+    static let smartalkSha256 = String(repeating: "5a", count: 32)
 }
 
 // ---- the harness ---------------------------------------------------------------------------------------------------
@@ -872,6 +875,29 @@ test("theSmarTalksDiskAsAZipIsItsVoice") {
     eq(plan.refusal, nil)
     eq(kinds(plan), [ST])
     eq(plan.found.first?.from, "S_TALK.EXE")
+}
+
+test("anotherSTalkExeIsToldWhichCopyTheVoiceRuns") {
+    // another version, or a copy changed: the words name the one it runs, by its size and sha256 (said only here)
+    let which = "not the SmarTalk's S_TALK.EXE 1.21, the copy this voice runs (36,882 bytes, SHA-256 " +
+        Fake.smartalkSha256 + ")"
+    let plan = inspect("S_TALK.EXE", bytes("MZ version 1.10"))
+    eq(plan.found.count, 0)
+    check(plan.refusal?.hasPrefix("S_TALK.EXE is " + which + ". Choose firmware files you own.") == true,
+          plan.refusal ?? "nil")
+    // its name in any case, in a zip's folder, beside a voice that is taken: a note
+    let other = inspect("mine.zip", zip([("SPEAKOUT.HEX", hex(true)), ("old/s_talk.exe", bytes("MZ 1.10"))]))
+    eq(kinds(other), [SO])
+    eq(other.notes, ["old/s_talk.exe is " + which + "; it is left out."])
+    // a zip in it, too
+    let inner = inspect("outer.zip", zip([("SPEAKOUT.HEX", hex(true)),
+                                          ("disk.zip", zip([("S_TALK.EXE", bytes("MZ 1.10"))]))]))
+    eq(inner.notes, ["disk.zip, S_TALK.EXE is " + which + "; it is left out."])
+    // the name alone words it: the same bytes under another name are no firmware, and say nothing of the SmarTalk
+    let renamed = inspect("PROGRAM.EXE", bytes("MZ version 1.10"))
+    check(renamed.refusal?.hasPrefix(FirmwareImport.noFirmwareFile) == true, renamed.refusal ?? "nil")
+    // the real one is the voice, whatever it is called
+    eq(kinds(inspect("SMARTALK.BIN", sTalk)), [ST])
 }
 
 test("theSmarTalkIsNamedForTheFileToBring") {

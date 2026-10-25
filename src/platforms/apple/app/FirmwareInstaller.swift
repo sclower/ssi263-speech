@@ -31,6 +31,8 @@ struct NativeIdentify: FirmwareImport.Identify {
         return FirmwareImport.Release(id: String(cString: id), name: String(cString: name),
                                       file: String(cString: file), voice: Int(ssa_release_voice(k)))
     }
+
+    func smartalkSha256() -> String { String(cString: ssp_smartalk_sha256()) }
 }
 
 enum FirmwareInstaller {

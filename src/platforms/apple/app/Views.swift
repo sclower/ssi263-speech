@@ -104,8 +104,8 @@ struct SetupView: View {
                 Text("This app carries no firmware. Each voice speaks once you import the firmware you own: the " +
                      "Braille Lite 2000's and its language updates, GW Micro's Speak-Out's, GW Micro's sb.zip for " +
                      "the Sounding Board (or its SBLOAD.COM and SB.COM together: the voice needs both), the " +
-                     "SmarTalk's S_TALK.EXE 1.21, from Automated Functions' SmarTalk V1.21 disk (36,882 bytes, " +
-                     "SHA-256 \(String(cString: ssp_smartalk_sha256()))), Aicom's " +
+                     "SmarTalk's S_TALK.EXE 1.21, from Automated Functions' SmarTalk V1.21 disk (36,882 bytes), " +
+                     "Aicom's " +
                      "for the Accent SA and Accent-mini, and " +
                      "for the Mockingboard, your own copy of the Mockingboard Developers Toolkit disk.")
             }

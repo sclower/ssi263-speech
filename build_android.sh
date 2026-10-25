@@ -259,6 +259,13 @@ stage_assets() {
             fi
         done
     fi
+    # The SmarTalk's S_TALK.EXE (Automated Functions', in the repository under its own notice: its makers let it be
+    # shared), as the Mockingboards' (Tomi, 2026-10-24); an imported copy wins.  check_apk_no_firmware.py lets exactly
+    # it through, in assets/smartalk with its notice.
+    if [ "$ST" = 1 ]; then
+        mkdir -p "$A/smartalk"
+        cp "$ROOT/firmware/automated-functions-smartalk/S_TALK.EXE" "$A/smartalk/"
+    fi
     # No firmware: the app is where it can NOT ship, so its users import their own (SettingsActivity).  A developer
     # build may carry it, by asking: SSI263_ANDROID_BUNDLE_FIRMWARE=1 (never a release).
     if [ "${SSI263_ANDROID_BUNDLE_FIRMWARE:-0}" = 1 ]; then
@@ -304,6 +311,9 @@ stage_assets() {
         if [ "$MBN" -gt 0 ]; then
             cp "$ROOT/src/platforms/android/notices/Sweet-Micro-Mockingboard-notice.txt" "$A/licenses/"
         fi
+    fi
+    if [ "$ST" = 1 ]; then                           # the SmarTalk's notice, its README in the repository
+        cp "$ROOT/firmware/automated-functions-smartalk/README.txt" "$A/licenses/SmarTalk-software-notice.txt"
     fi
     cp "$ROOT/third_party/casso/LICENSE" "$A/licenses/Casso-MIT.txt"
     ls -R "$A" | head -20

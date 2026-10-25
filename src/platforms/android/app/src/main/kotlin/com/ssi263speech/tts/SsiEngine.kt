@@ -68,8 +68,10 @@ object SsiEngine {
             SsiData.accentMini(ctx)?.let { dvc ->
                 if (!SsiNative.nativeAccentMini(dvc)) Log.e("SsiEngine", "the Accent-mini's SPKEMS.DVC was refused")
             }
-            for (voice in FirmwareImport.BUILT_IN) SsiData.mockingboard(ctx, voice)?.let { bin ->
-                if (!SsiNative.nativeMockingboard(voice, bin)) Log.e("SsiEngine", "the built-in Mockingboard file $voice was refused")
+            for (voice in FirmwareImport.BUILT_IN) SsiData.builtIn(ctx, voice)?.let { bin ->
+                val ok = if (voice == FirmwareImport.SMARTALK) SsiNative.nativeSmarTalk(bin)
+                         else SsiNative.nativeMockingboard(voice, bin)
+                if (!ok) Log.e("SsiEngine", "the built-in file of voice $voice was refused")
             }
             opened = true
             return true

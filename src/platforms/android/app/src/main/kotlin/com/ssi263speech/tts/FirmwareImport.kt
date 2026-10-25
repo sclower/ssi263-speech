@@ -73,8 +73,9 @@ object FirmwareImport {
     /** A voice of two files (the Sounding Board's drivers): each file's code, in [FILES]' order. */
     val PARTS = mapOf(SOUNDINGBOARD to listOf(SB_LOAD, SB_COM))
     const val SOUNDINGBOARD_LABEL = "GW Micro Sounding Board 2.7: SBLOAD.COM and SB.COM"
-    /** The voices the APK also carries a copy of (assets/sweet-micro): an import replaces it. */
-    val BUILT_IN = setOf(MOCKINGBOARD, MOCKINGBOARD_EARLY)
+    /** The voices the APK also carries a copy of (the Mockingboards' in assets/sweet-micro, the SmarTalk's in
+     * assets/smartalk: SsiData.BUILT_IN_DIR): an import replaces it. */
+    val BUILT_IN = setOf(MOCKINGBOARD, MOCKINGBOARD_EARLY, SMARTALK)
 
     /** A release voice: a Braille Lite 2000 language update the release table names a voice for (bl_languages.txt:
      * Hungarian, Turkish, ...), its index ssa_engine.h's from SSA_RELEASE_FIRST.  `id` names its state, `file` is the
@@ -261,7 +262,7 @@ object FirmwareImport {
             val out = File(staging, "candidate${n++}.bin")
             val (language, text) = id.firmware(bytes, out).let {
                 if ((CONTROL == "speakout" && it.first == SPEAKOUT) ||
-                    (CONTROL == "mockingboard" && it.first in BUILT_IN) ||
+                    (CONTROL == "mockingboard" && it.first in setOf(MOCKINGBOARD, MOCKINGBOARD_EARLY)) ||
                     (CONTROL == "soundingboard" && it.first in PARTS.getValue(SOUNDINGBOARD)) ||
                     (CONTROL == "smartalk" && it.first == SMARTALK)) NONE to "" else it
             }

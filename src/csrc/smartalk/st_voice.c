@@ -17,6 +17,11 @@
 #define LEAD_THRESHOLD 0.003                /* the silence before the first phoneme left out (am_voice.c's) */
 #define LEAD_PREROLL 220
 #define DEF_STEP 5                          /* the TSR's defaults after power-up: rate 5, pitch 5, tone I, inflection, */
+#define DEF_RATE 3                          /* ... except its rate: S_TALK.EXE 1.21 (STH_SHA256) starts at the speed
+                                               ESC >3 gives, though TECHMAN.TXT says 5 -- after the boot its
+                                               rate-dependent state is ESC >3's, and the two say a text with the same
+                                               chip writes (Astra, Reply 251).  So NVDA's 50 is digit 3: the command that
+                                               keeps the startup speed the voice was heard and approved at */
 #define DEF_TONE 'I'
 #define DEF_VOLUME 4                        /* volume 4 */
 #define BOX_VOLUME 9                        /* the box's volume here: its top step, as loud as the Speak-Out, the
@@ -48,6 +53,18 @@ ST_API int stv_step(int value)
 }
 
 ST_API char stv_tone_letter(int tone) { return tone >= 0 && tone < 26 ? (char)('A' + tone) : DEF_TONE; }
+
+/* NVDA's rate as the TSR's digit: 50 is its power-up speed, digit 3 (DEF_RATE), 0-50 onto 0-3 and 50-100 onto 3-9.
+   ST_RATE_BREAK in the environment, the tests' control: stv_step's 50 = 5, as it was, so a rate moved back to 50 is
+   faster than a fresh unit's */
+ST_API int stv_rate_step(int value)
+{
+    value = clamp(value, 0, 100);
+    if (getenv("ST_RATE_BREAK"))
+        return stv_step(value);
+    return value <= 50 ? (int)(value * DEF_RATE / 50.0 + 0.5)
+                       : DEF_RATE + (int)((value - 50) * (9 - DEF_RATE) / 50.0 + 0.5);
+}
 
 /* ---- the parts (mb_voice.c's) --------------------------------------------------------------------------------------- */
 
@@ -273,10 +290,11 @@ static st_host *boot(const unsigned char *exe, size_t n, double out_rate, char *
     return h;
 }
 
-/* what the TSR has after power-up: rate 5, pitch 5, tone I, its inflection, volume 4 */
+/* what the TSR has after power-up: rate 3's speed (DEF_RATE), pitch 5, tone I, its inflection, volume 4 */
 static void defaults_sent(st_voice *v)
 {
-    v->sent_rate = v->sent_pitch = DEF_STEP;
+    v->sent_rate = getenv("ST_RATE_BREAK") ? DEF_STEP : DEF_RATE;
+    v->sent_pitch = DEF_STEP;
     v->sent_tone = DEF_TONE;
     v->sent_mono = 0;
     v->sent_volume = DEF_VOLUME;
@@ -346,7 +364,7 @@ ST_API void stv_set(st_voice *v, int rate, int pitch, int tone, int volume, int 
 /* the settings that differ from what the TSR has, as its commands, into v->cmd */
 static void commands(st_voice *v, int pitch_offset)
 {
-    int rate = stv_step(v->rate), pitch = stv_step(v->pitch + pitch_offset), mono = !v->inflection;
+    int rate = stv_rate_step(v->rate), pitch = stv_step(v->pitch + pitch_offset), mono = !v->inflection;
     char tone = stv_tone_letter(v->tone);
     v->n_cmd = 0;
     if (rate != v->sent_rate) {

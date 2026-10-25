@@ -522,8 +522,6 @@ def drop(found):
 # counts them, so no release ships with one.  Remove an entry when its port lands; an entry for a voice the platform
 # now offers is itself reported, so none outlives its port.
 PENDING = {
-    ("smartalk:smartalk", "sapi"): "the SmarTalk (PR 24) is NVDA's only, until it is ported",
-    ("smartalk:smartalk", "linux"): "the SmarTalk (PR 24) is NVDA's only, until it is ported",
 }
 
 

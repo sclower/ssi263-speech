@@ -468,7 +468,8 @@ class FirmwareImportTest {
 
     @Test fun theMockingboardHasNoStateToMake() {
         assertTrue(FirmwareImport.MOCKINGBOARD_EARLY in FirmwareImport.NO_STATE)
-        assertEquals(FirmwareImport.BUILT_IN, setOf(FirmwareImport.MOCKINGBOARD, FirmwareImport.MOCKINGBOARD_EARLY))
+        assertEquals(FirmwareImport.BUILT_IN, setOf(FirmwareImport.MOCKINGBOARD, FirmwareImport.MOCKINGBOARD_EARLY,
+                                                    FirmwareImport.SMARTALK))
         assertTrue(FirmwareImport.MOCKINGBOARD in FirmwareImport.NO_STATE)
         assertEquals(listOf("mockingboard-tts-1.1.bin"), FirmwareImport.FILES[FirmwareImport.MOCKINGBOARD])
         assertTrue(FirmwareImport.MOCKINGBOARD in FirmwareImport.IMPORTED)

@@ -86,7 +86,7 @@ class SynthDriver(SynthDriver):
 
     def __init__(self, startVoice=None):
         super().__init__()
-        self._rate = 50       # the box's rate 5, its default
+        self._rate = 50       # the box's power-up speed (its rate 3: st_voice.c DEF_RATE)
         self._pitch = 50      # its pitch 5
         self._tone = "i"      # its tone I (TECHMAN.TXT; its V3 setting, the Accent's V5)
         self._volume = 100

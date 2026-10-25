@@ -10,7 +10,10 @@ es-ES), the Speak-Out, the Accent-mini, the Accent SA, and the Mockingboard in i
 new in 0.8: Sweet Micro's own text-to-speech on a 6502 -- "Mockingboard", 1.1 from the Developers Toolkit,
 `mockingboard-tts-1.1.bin`, and "Mockingboard, early", Mockingboard disk 1's, `mockingboard-tts-early.bin`, each staged
 when its file is there; rate, pitch and volume only -- nothing in the settings dialog is theirs; the firmware's notice
-and the 6502's credits, Fake6502 by way of EchoTalk, are in `{app}\licenses`).
+and the 6502's credits, Fake6502 by way of EchoTalk, are in `{app}\licenses`); and Automated Functions' SmarTalk,
+its own DOS text-to-speech `S_TALK.EXE` (in the repository, staged with its notice beside it): rate, pitch and volume
+are SAPI's, its inflection follows the dialog's Accent intonation (monotone below 50), its tone and number words are its
+own.
 
 | File | What it is |
 | --- | --- |

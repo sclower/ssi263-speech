@@ -90,6 +90,8 @@ ssa_map.c and ssa_import.c, on the same chip, boards, hosts and voices), every c
                                                   import fails)
                              smartalk-pitch       ssa_voice_break 11: the SmarTalk's request pitch dropped
                              smartalk-numbers     ssa_voice_break 12: its number words dropped (always off)
+                             smartalk-import-ignored   13: its imported copy ignored (the built-in one used)
+                             smartalk-builtin-ignored  14: its built-in copy ignored (import only)
 
 SSI263_ANDROID_TEST_ONLY=<blocks>, a comma list of bl (the Braille Lite in lockstep, its Spanish unit and the probe),
 ra (run ahead), lift (the line-start lift), num (the number words), lang (0.8's German, Italian and Slovak units),
@@ -628,6 +630,18 @@ def st_heard(label, got):
     on, off = got.get("st-num"), got.get("st-num-off")
     ok = on is not None and off is not None and on[1] != off[1]
     print("%-5s %-8s st-num differs from st-num-off (the number words heard)" % ("ok" if ok else "FAIL", label))
+    bad += not ok
+    # the built-in copy (the GitHub APK's assets/smartalk): used with no import, an imported one over it, and a changed
+    # copy refused; its "Hello." is compared with the probe's above (want["st-builtin"])
+    out = got.get("_out", "")
+    src = re.search(r"^st-source (\d) (\d)$", out, re.M)
+    ok = bool(src) and src.groups() == ("2", "1")
+    print("%-5s %-8s st: its built-in copy used with no import, an imported one over it (source %s)" % (
+        "ok" if ok else "FAIL", label, " then ".join(src.groups()) if src else "not reported"))
+    bad += not ok
+    ref = re.search(r"^st-refused (\d)$", out, re.M)
+    ok = bool(ref) and ref.group(1) == "1"
+    print("%-5s %-8s st: a copy with one byte changed refused as its built-in copy" % ("ok" if ok else "FAIL", label))
     return bad + (not ok)
 
 
@@ -1294,8 +1308,8 @@ def main():
         if smartalk and block("st"):
             want.update(st_reference(exe))
             # ssa_probe on the SmarTalk: a fresh unit says the import's "Hello." at the defaults
-            want["st-probe"] = st_reference(exe, [("st-probe", "Hello.", 50, 50, 100, 100, 100, 1, 22050, 4096,
-                                                   0)])["st-probe"]
+            want["st-probe"] = want["st-builtin"] = st_reference(exe, [("st-probe", "Hello.", 50, 50, 100, 100, 100,
+                                                                        1, 22050, 4096, 0)])["st-probe"]
         elif not smartalk:
             print("skip  the SmarTalk: no firmware/automated-functions-smartalk/S_TALK.EXE")
         for f, what in ((MB_BIN, "Mockingboard"), (MB_BIN_EARLY, "early Mockingboard")):

@@ -14,6 +14,10 @@ glides inside the utterance stay (the TSR's own: the slowest glide field).
 Controls: ST_VOICE_BREAK=1 (or tone) -- the voice is told the tone is A for every text whatever it is asked (stv_set's
 tone pinned): the tone check must then fail, and only it.  ST_VOICE_BREAK=snap -- the snap disarmed after each
 speak: the phrase-start and capital checks must fail, and only they.
+ST_RATE_BREAK=1 -- the rate's old mapping (50 = the TSR's ESC >5, not its power-up speed): the rate-back-at-50
+check must fail, and only it.
+SSV_BANK_BREAK=1 -- a bank keeps its last slot on a boot change (the SmarTalk's, as when its slot was past the
+bank's end): the bank check must fail, and only it.
 """
 import ctypes
 import os
@@ -177,6 +181,38 @@ def main():
         ok(r > 300 and 0.8 < len(out) / 22050.0 < 6, "speaks through the table", "%.2f s at 22050 Hz, rms %.0f" % (
             len(out) / 22050.0, r))
         lib.ssv_destroy(t)
+        # through a bank, as the SAPI engine keeps its units: a boot change lets the SmarTalk's unit go, and the next
+        # one speaks as a fresh unit does (its slot was once past the bank's end, kept for ever: SSV_BANK_BREAK=1 puts
+        # that back)
+        lib.ssv_bank_new.restype = ctypes.c_void_p
+        lib.ssv_bank_new.argtypes = [ctypes.c_char_p]
+        lib.ssv_bank_voice.restype = ctypes.c_void_p
+        lib.ssv_bank_voice.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_int]
+        lib.ssv_bank_boot.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        lib.ssv_bank_free.argtypes = [ctypes.c_void_p]
+
+        class Boot(ctypes.Structure):
+            _fields_ = [("sample_rate", ctypes.c_int), ("inflection", ctypes.c_int), ("whine", ctypes.c_int)]
+
+        def bank_says(k):
+            u = lib.ssv_bank_voice(k, i, err, 300)
+            got = []
+            if u:
+                lib.ssv_speak(u, None, TEXT.encode(), 0)
+                for _ in range(4000):
+                    n = lib.ssv_render(u, ctypes.byref(pcm), ctypes.byref(done))
+                    if n > 0:
+                        got.extend(pcm[:n])
+                    if done.value or n < 0:
+                        break
+            return got
+        k = lib.ssv_bank_new(FW.encode())
+        first = bank_says(k)
+        lib.ssv_bank_boot(k, ctypes.byref(Boot(22050, 0, 0)))
+        again = bank_says(k)
+        lib.ssv_bank_free(k)
+        ok(bool(first) and again == first, "a bank's unit made again on a boot change",
+           "%d samples, then %d%s" % (len(first), len(again), "" if again == first else ": NOT a fresh unit's"))
         # as loud as the Speak-Out (the box's volume 9, st_voice.h): the speech's level (samples above 300), within 1 dB
         so = lib.ssv_find(b"speakout:speakout")
         if so >= 0 and lib.ssv_available(so, FW.encode()):
@@ -214,6 +250,12 @@ def main():
     _p, w9, _n = v.say(TEXT)
     ok(length(w9) < base_len < length(w0), "rate: 0 slower, 100 faster", "%.2f s / %.2f s / %.2f s" % (
         length(w0), base_len, length(w9)))
+    # back at 50, the speed a fresh unit speaks at (its startup rate, ESC >3's: st_voice.c DEF_RATE): it was 27 %
+    # shorter, the TSR's ESC >5 (ST_RATE_BREAK=1 puts that back)
+    v.set(rate=50)
+    _p, w5, _n = v.say(TEXT)
+    ok(abs(length(w5) - base_len) <= 0.03 * base_len, "rate back at 50: a fresh unit's speed",
+       "%.2f s against %.2f s" % (length(w5), base_len))
     v.set(pitch=0)
     _p, wp0, _n = v.say(TEXT)
     v.set(pitch=100)

@@ -6,7 +6,8 @@
 // SSI263_ANDROID_BUNDLE_FIRMWARE=1 carries the Braille Lite's as assets, copied in once per installed version.  The
 // Accents': Aicom's ROMs (and the Accent-mini's SPKEMS.DVC, in a build that has that voice), in the APK
 // (assets/aicom), handed over in memory; the Mockingboards' too, from assets/sweet-micro (Tomi, 2026-10-10: the
-// GitHub APK carries them until a store build exists), an imported copy winning.
+// GitHub APK carries them until a store build exists), and the SmarTalk's S_TALK.EXE from assets/smartalk (Tomi,
+// 2026-10-24), an imported copy winning.
 package com.ssi263speech.tts
 
 import android.content.Context
@@ -32,11 +33,11 @@ object SsiData {
     fun staging(ctx: Context): File = File(protectedContext(ctx).filesDir, "unit.importing")
 
     /** The voice can speak: the Accents' ROMs are in the APK; an imported voice's files are all here; a Mockingboard's
-     * file is here or in the APK. */
+     * file, or the SmarTalk's, is here or in the APK. */
     fun has(ctx: Context, voice: Int): Boolean {
         if (voice == SsiNative.ACCENT_SA) return accentRoms(ctx) != null
         if (voice == SsiNative.ACCENT_MINI) return accentMini(ctx) != null
-        return imported(ctx, voice) || (voice in FirmwareImport.BUILT_IN && mockingboard(ctx, voice) != null)
+        return imported(ctx, voice) || (voice in FirmwareImport.BUILT_IN && builtIn(ctx, voice) != null)
     }
 
     /** The voice's files were imported: all of them are here. */
@@ -49,19 +50,24 @@ object SsiData {
     /** Firmware has been imported: a Braille Lite voice, the Speak-Out or a Mockingboard. */
     fun any(ctx: Context): Boolean = FirmwareImport.imported().any { imported(ctx, it) }
 
-    // ---- the Mockingboards' files: Sweet Micro Systems', carried by the GitHub APK (Tomi, 2026-10-10) ----------------
+    // ---- the files the GitHub APK carries beside the Accents': the Mockingboards' (Sweet Micro Systems', Tomi,
+    // 2026-10-10) and the SmarTalk's S_TALK.EXE (Automated Functions', who let it be shared; Tomi, 2026-10-24) ---------
 
-    private const val SWEET_MICRO = "sweet-micro"
-    private val mb = HashMap<Int, ByteArray?>()
+    /** Each built-in voice's asset folder. */
+    private val BUILT_IN_DIR = mapOf(FirmwareImport.MOCKINGBOARD to "sweet-micro",
+                                     FirmwareImport.MOCKINGBOARD_EARLY to "sweet-micro",
+                                     FirmwareImport.SMARTALK to "smartalk")
+    private val builtIn = HashMap<Int, ByteArray?>()
 
-    /** A Mockingboard voice's file from the APK's assets/sweet-micro, read once; null when this APK has none (a build
-     * made without the local firmware: the voice is then import only) or no Mockingboard. */
-    fun mockingboard(ctx: Context, voice: Int): ByteArray? = synchronized(mb) {
-        mb.getOrPut(voice) {
+    /** A built-in voice's file from the APK's assets, read once; null when this APK has none (a build made without the
+     * local firmware: the voice is then import only) or not the voice. */
+    fun builtIn(ctx: Context, voice: Int): ByteArray? = synchronized(builtIn) {
+        builtIn.getOrPut(voice) {
             try {
                 val name = files(voice)?.get(0)
-                if (voice !in FirmwareImport.BUILT_IN || name == null || !SsiNative.nativeVoiceBuilt(voice)) null
-                else ctx.assets.open("$SWEET_MICRO/$name").use { it.readBytes() }.takeIf { it.isNotEmpty() }
+                val folder = BUILT_IN_DIR[voice]
+                if (folder == null || name == null || !SsiNative.nativeVoiceBuilt(voice)) null
+                else ctx.assets.open("$folder/$name").use { it.readBytes() }.takeIf { it.isNotEmpty() }
             } catch (e: Exception) { null }           // not in this APK: import only, nothing wrong
         }
     }

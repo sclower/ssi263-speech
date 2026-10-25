@@ -80,14 +80,15 @@ $files = @(& $serve --files --firmware $fwSrc)
 if ($LASTEXITCODE -or $files.Count -eq 0) { throw "the native voices found no firmware in $fwSrc" }
 # Voices not ported to SAPI yet (tools/check_uniform.py PENDING): their firmware stays out of the stage, so the
 # library does not list them.  Remove an entry when its port lands.
-$pending = @("automated-functions-smartalk/")         # the SmarTalk (PR 24): NVDA's only, until ported
+$pending = @()                                         # none now (the SmarTalk's landed: the stage carries it)
 $files = @($files | Where-Object { $rel = $_; -not ($pending | Where-Object { $rel.StartsWith($_) }) })
 foreach ($rel in $files) {
   $dst = Join-Path $fw $rel
   New-Item -ItemType Directory -Force (Split-Path -Parent $dst) | Out-Null
   Copy-Item (Join-Path $fwSrc $rel) $dst
 }
-foreach ($rel in "AICOM.txt", "blazie/README.txt", "gw-micro-speakout/README.txt", "gw-micro-sounding-board/README.txt") {   # beside the files they speak of
+foreach ($rel in "AICOM.txt", "blazie/README.txt", "gw-micro-speakout/README.txt", "gw-micro-sounding-board/README.txt",
+                 "automated-functions-smartalk/README.txt") {   # beside the files they speak of (the SmarTalk's: its notice)
   $src = Join-Path $fwSrc $rel
   $dst = Join-Path $fw $rel
   if ((Test-Path $src) -and ($rel -ne "AICOM.txt" -or (Test-Path (Join-Path $fw "aicom-*"))) -and (Test-Path (Split-Path -Parent $dst))) {

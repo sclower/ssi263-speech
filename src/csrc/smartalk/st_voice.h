@@ -4,7 +4,8 @@
  *
  * Settings, on NVDA's scales, onto the TSR's own commands (TECHMAN.TXT on its disk), each sent only when it changed
  * (they stay with the TSR, a cancel included):
- *   rate 0-100        ESC > 0-9 (50 = 5, its default)
+ *   rate 0-100        ESC > 0-9 (50 = 3: S_TALK.EXE 1.21 starts at the speed ESC >3 gives, though its manual says
+ *                     5; stv_rate_step)
  *   pitch 0-100       ESC P 0-9 (50 = 5, its default)
  *   tone 0-25         ESC { A-Z (8 = I, its default)
  *   inflection        1: its regular inflection (ESC m 0, the default); 0: monotone (ESC m 1)
@@ -62,8 +63,10 @@ ST_API void stv_cancel(st_voice *v);
    box */
 ST_API int stv_fault(const st_voice *v);
 
-/* The TSR's digit for NVDA's rate or pitch (0-9), and its tone letter for 0-25 (else 'I'), for tests and front ends. */
+/* The TSR's digit for NVDA's pitch (0-9; 50 = 5), for its rate (0-9; 50 = 3), and its tone letter for 0-25 (else
+   'I'), for tests and front ends. */
 ST_API int stv_step(int value);
+ST_API int stv_rate_step(int value);
 ST_API char stv_tone_letter(int tone);
 /* The text the voice says for utf8 (with numbers on or off), as the parts it gives the TSR, joined by '|': the
    length, copied into out (NUL-terminated) when it fits in cap.  For tests. */

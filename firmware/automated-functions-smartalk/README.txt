@@ -19,5 +19,7 @@ Its notice -- this file is NOT under the repository's MIT licence:
 
 It is shared here on those words, unchanged: never patch it.  Only S_TALK.EXE is included; the disk's other files are
 not (INI3.EXE and SSIL.DLL are not Automated Functions' own).  The NVDA add-on carries it with this notice
-(nvda/build_ssi263.py).  The phone apps do not: they stay free of firmware, and the file is imported there like the
-others (src/platforms/android/test/check_apk_no_firmware.py refuses it by its sha256).
+(nvda/build_ssi263.py), and so do the SAPI voices, the Linux package and the GitHub Android APK (in assets/smartalk;
+src/platforms/android/test/check_apk_no_firmware.py lets exactly it through there).  The Apple apps do not: they
+stay free of firmware, and the file is imported there like the others
+(src/platforms/apple/test/check_archive_no_firmware.py refuses it by its sha256).

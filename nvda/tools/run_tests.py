@@ -368,14 +368,14 @@ if os.path.isfile(os.path.join(os.path.dirname(os.path.dirname(HERE)), "build", 
                         expect_fail=True,
                         fail_marks=[r"^FAIL listing x64: mockingboard:mockingboard is not offered ",
                                     r"^FAIL listing x86: mockingboard:mockingboard is not offered ",
-                                    r"; native only: mockingboard:early, blazie:blazie_de, blazie:blazie_it, blazie:blazie_sk$", r"^native: 2 FAILED$"]))
+                                    r"; native only: mockingboard:early, blazie:blazie_de, blazie:blazie_it, blazie:blazie_sk, smartalk:smartalk$", r"^native: 2 FAILED$"]))
     # ... and the early one's (disk 1's text-to-speech, mockingboard-tts-early.bin): named alone, 1.1 still checked
     CHECKS.append(check("SAPI native voices CONTROL (the early Mockingboard's firmware missing, must fail)",
                         [PY, SAPI_NATIVE, "--only", "own"], env={"SSI263_NATIVE_WITHOUT": "mockingboard:early"},
                         expect_fail=True,
                         fail_marks=[r"^FAIL listing x64: mockingboard:early is not offered ",
                                     r"^FAIL listing x86: mockingboard:early is not offered ",
-                                    r"; native only: mockingboard:mockingboard, blazie:blazie_de, blazie:blazie_it, blazie:blazie_sk$",
+                                    r"; native only: mockingboard:mockingboard, blazie:blazie_de, blazie:blazie_it, blazie:blazie_sk, smartalk:smartalk$",
                                     r"^native only mockingboard:mockingboard: (\d+) of \1 checks right",
                                     r"^native: 2 FAILED$"]))
     # the number words alone, on random texts: the driver's _numbers against bl_numbers (English, and Spain's Spanish)
@@ -1283,6 +1283,12 @@ if os.path.isfile(ANDROID_TEST):
              [r"^FAIL +desktop +st-pitch-150 +got ", r"^ok +desktop +st-pitch-100 ", r"^FAILED: 9 case\(s\) differ$"]),
             ("smartalk-numbers", "SmarTalk: number words dropped",
              [r"^FAIL +desktop +st-num +got ", r"^ok +desktop +st-default ", r"^FAILED: 5 case\(s\) differ$"]),
+            # the GitHub APK's built-in S_TALK.EXE (assets/smartalk): the imported copy ignored; the built-in one ignored
+            ("smartalk-import-ignored", "SmarTalk: the imported copy ignored",
+             [r"^FAIL +desktop +st-default +got None", r"^FAIL +desktop +st: its built-in copy used with no import, "
+              r"an imported one over it \(source 2 then 2\)", r"^FAILED: 22 case\(s\) differ$"]),
+            ("smartalk-builtin-ignored", "SmarTalk: the built-in copy ignored",
+             [r"^FAIL +desktop +st-builtin +got \(0, ", r"^ok +desktop +st-default ", r"^FAILED: 2 case\(s\) differ$"]),
             ) + ((
             ("numbers", "Braille Lite: number words dropped",
              [r"^FAIL +desktop +num-en +got ", r"^FAIL +desktop +num-es +got ", r"^ok +desktop +num-en-off ",
@@ -1328,7 +1334,8 @@ if os.path.isfile(ANDROID_TEST):
                 "numbers": "num",
                 "speakout-pitch": "so", "speakout-settings": "so", "import-hash": "import", "import-dsk": "import",
                 "import-lang": "import", "import-release": "import", "import-units": "import", "import-sb": "import",
-                "import-st": "import", "smartalk-pitch": "st", "smartalk-numbers": "st"}.get(
+                "import-st": "import", "smartalk-pitch": "st", "smartalk-numbers": "st",
+                "smartalk-import-ignored": "st", "smartalk-builtin-ignored": "st"}.get(
                     brk, "mb" if brk.startswith("mockingboard-") else "accent")
         CHECKS.append(check("Android engine CONTROL (%s, must fail)" % what, [PY, ANDROID_TEST],
                             env={"SSI263_ANDROID_TEST_BREAK": brk, "SSI263_ANDROID_TEST_ONLY": only}, expect_fail=True,
@@ -1410,6 +1417,26 @@ if os.path.isfile(ANDROID_TEST):
                             fail_marks=[r"^synthetic\.apk: \d+ entries, no firmware; ",
                                         r"Sweet Micro's files allowed: 2 .*WITHOUT its notice$",
                                         r"^synthetic\.apk: licences WRONG: .*Sweet-Micro-Mockingboard-notice\.txt"]))
+    # the SmarTalk's S_TALK.EXE (the GitHub APK carries it, Tomi 2026-10-24) passes by sha256 in assets/smartalk with
+    # its notice; one byte changed, the notice gone, or the file anywhere else must fail
+    CHECKS.append(check("Android APK check: the SmarTalk's S_TALK.EXE passes, with its notice",
+                        [PY, APK_CHECK, "--synthetic"],
+                        ok=lambda out: bool(re.search(r"^synthetic\.apk: the SmarTalk's file allowed: 1 "
+                                                      r"\(S_TALK\.EXE\), with its notice$", out, re.M))))
+    CHECKS.append(check("Android APK check CONTROL (the SmarTalk's file changed, must fail)",
+                        [PY, APK_CHECK, "--control-smartalk-flipped", "--synthetic"], expect_fail=True,
+                        fail_marks=[r"assets/smartalk/S_TALK\.EXE: in assets/smartalk/ but not the SmarTalk's S_TALK\.EXE",
+                                    r"^synthetic\.apk: the SmarTalk's file allowed: 0$"]))
+    CHECKS.append(check("Android APK check CONTROL (the SmarTalk's file without its notice, must fail)",
+                        [PY, APK_CHECK, "--control-no-smartalk-notice", "--synthetic"], expect_fail=True,
+                        fail_marks=[r"^synthetic\.apk: \d+ entries, no firmware; ",
+                                    r"the SmarTalk's file allowed: 1 .*WITHOUT its notice$",
+                                    r"^synthetic\.apk: licences WRONG: .*SmarTalk-software-notice\.txt"]))
+    CHECKS.append(check("Android APK check CONTROL (the SmarTalk's file outside assets/smartalk, must fail)",
+                        [PY, APK_CHECK, "--control", os.path.join(ROOT_FW, "automated-functions-smartalk", "S_TALK.EXE"),
+                         "--synthetic"], expect_fail=True,
+                        fail_marks=[r"^synthetic\.apk: \d+ entries, FIRMWARE: ",
+                                    r"unit\.dat: the SmarTalk's S_TALK\.EXE outside assets/smartalk/"]))
 # ... its firmware import (src/csrc/blazie/bl_firmware.c, bl_state.c): files found and refused by content, only the
 # releases on the list taken, and the states made from the firmware alone = the listed ones (MAME-made, 0.7), byte
 # for byte, the z180emu-made shipped states refused; one control holds the wrong chord at the English warm reset and
@@ -1974,6 +2001,17 @@ if os.path.isfile(ST_EXE):
                         env={"ST_VOICE_BREAK": "1"}, expect_fail=True,
                         fail_marks=[r"^FAIL  tone: A lower, Z higher than I ", r"^ok    volume: the gain only ",
                                     r"^st voice: 1 FAILED$"]))
+    # the bank's last slot never let go (the SmarTalk's unit once sat past the bank's end): a boot change keeps it
+    CHECKS.append(check("SmarTalk voice CONTROL (the bank's last slot kept on a boot change, must fail)", [PY, ST_VOICE],
+                        env={"SSV_BANK_BREAK": "1"}, expect_fail=True,
+                        fail_marks=[r"^FAIL  a bank's unit made again on a boot change ",
+                                    r"^ok    speaks through the table ", r"^st voice: 1 FAILED$"]))
+    # the rate's old mapping (50 = the TSR's ESC >5, not its power-up speed): a rate moved back to 50 is faster than a
+    # fresh unit's (st_voice.c DEF_RATE), and only that check fails
+    CHECKS.append(check("SmarTalk voice CONTROL (the rate's old mapping, 50 = ESC >5, must fail)", [PY, ST_VOICE],
+                        env={"ST_RATE_BREAK": "1"}, expect_fail=True,
+                        fail_marks=[r"^FAIL  rate back at 50: a fresh unit's speed ",
+                                    r"^ok    rate: 0 slower, 100 faster ", r"^st voice: 1 FAILED$"]))
     # the pitch snap at an utterance's start disarmed: the phrase start, the capital and a new pitch setting must
     # fail, the glides inside the phrase still pass
     CHECKS.append(check("SmarTalk voice CONTROL (no pitch snap, must fail)", [PY, ST_VOICE],

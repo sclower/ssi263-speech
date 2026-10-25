@@ -58,9 +58,10 @@ The Accent-mini's driver (`SPKEMS.DVC`, Aicom's: `firmware/aicom-accent-mini`) i
 (`ssa_set_accent_mini`); its voice is `am_voice.c`, the NVDA Accent driver's "mini" voice in C. It keeps one unit, as
 the Speak-Out does, and takes a request's pitch as the driver takes a capital's (below).
 
-The GitHub APK carries Aicom's content and Sweet Micro's (Tomi, 2026-10-10: until a Play Store flavor exists):
-`check_apk_no_firmware.py` lets exactly the three ROMs, the Accent-mini's driver and the two Mockingboard files
-through, by sha256, and refuses any Blazie or Speak-Out firmware or state and any Apple II disk image.
+The GitHub APK carries Aicom's content and Sweet Micro's (Tomi, 2026-10-10: until a Play Store flavor exists), and
+the SmarTalk's S_TALK.EXE (Tomi, 2026-10-24): `check_apk_no_firmware.py` lets exactly the three ROMs, the
+Accent-mini's driver, the two Mockingboard files and S_TALK.EXE through, by sha256, each in its own folder with its
+notice, and refuses any Blazie or Speak-Out firmware or state and any Apple II disk image.
 
 ## The Mockingboards: built in, or imported
 
@@ -103,13 +104,15 @@ It takes:
   voice, **GW Micro Sounding Board (English)**, is the Speak-Out's voice on the card's own drivers (`sb_host.h` on the
   Accent-mini's 8086), listed only once both are imported. It sits right after the release voices
   (`SSA_SOUNDINGBOARD`, 27), so no voice saved before it moves; a release voice added to the table later would move it.
-- Automated Functions' SmarTalk: its `S_TALK.EXE` 1.21, known by its sha256 (`ssa_import_smartalk`), from the
-  SmarTalk's disk or the NVDA add-on, which carries it (`_ssi263_smartalk/`). The voice, **SmarTalk (Automated
-  Functions)**, is the box's own DOS text-to-speech on the Accent-mini's 8086 (`smartalk/st_voice.h`), after the
-  Sounding Board (`SSA_SMARTALK`, 28). Its makers let the program be shared, and the repository and the add-on carry
-  it, but the APK does not: the app carries no one's firmware (its audit refuses the file by sha256). The sliders
-  set its rate, pitch and volume, the Inflection switch its inflection, and "Read numbers as words" its number
-  words; its tone is the TSR's own, I.
+- Automated Functions' SmarTalk: its `S_TALK.EXE` 1.21. The voice, **SmarTalk (Automated Functions)**, is the box's
+  own DOS text-to-speech on the Accent-mini's 8086 (`smartalk/st_voice.h`), after the Sounding Board
+  (`SSA_SMARTALK`, 28). Its makers let the program be shared, so the GitHub APK carries it as it carries the
+  Mockingboards' files (Tomi, 2026-10-24): `build_android.sh` stages the repository's copy in `assets/smartalk` with
+  its notice (`assets/licenses/SmarTalk-software-notice.txt`), `ssa_set_smartalk` takes it in memory (by its sha256
+  only), and an imported copy -- known by its sha256 (`ssa_import_smartalk`), from the SmarTalk's disk or the NVDA
+  add-on (`_ssi263_smartalk/`) -- wins over it. `check_apk_no_firmware.py` lets exactly that file through, in
+  `assets/smartalk` with its notice; the Apple apps carry none. The sliders set its rate, pitch and volume, the
+  Inflection switch its inflection, and "Read numbers as words" its number words; its tone is the TSR's own, I.
 
 ### The Mockingboards: Sweet Micro's text-to-speech, one file each
 
@@ -284,6 +287,7 @@ shipped in the APK. The Setup page's "Licenses and source" shows them all and po
     SSI263_ANDROID_TEST_BREAK=mockingboard-pitch|mockingboard-numbers|import-dsk ...      # the Mockingboards': must FAIL
     SSI263_ANDROID_TEST_BREAK=mockingboard-import-ignored|mockingboard-builtin-ignored|mockingboard-variant ...
     SSI263_ANDROID_TEST_BREAK=smartalk-pitch|smartalk-numbers|import-st ...              # the SmarTalk's: must FAIL
+    SSI263_ANDROID_TEST_BREAK=smartalk-import-ignored|smartalk-builtin-ignored ...       # its built-in copy's: FAIL
     python src/platforms/android/test/test_volume_headroom.py              # the default volume, every voice
     python src/platforms/android/test/test_device_service.py [--rate 2.0] [--aloud]
                                   [--voice accent|braillelite|speakout|accentmini|mockingboard|both|all]

@@ -581,6 +581,26 @@ if ./build/linux/sd_ssi263 --voices | grep -q '^soundingboard' && [ -f "$ROOT/fi
         grep -c -E '/(share/ssi263-speech/gw-micro-sounding-board/(SBLOAD|SB)\.COM|licenses/MAME-8086-core-BSD-3-Clause\.txt|licenses/Sounding-Board-drivers-notice\.txt)\$' | \
         grep -qx 4 && echo 'SBLOAD.COM, SB.COM, their notice, MAME 8086 BSD-3-Clause: in the package'"
 fi
+# the SmarTalk as a voice (tools/check_st_voice.py; S_TALK.EXE is in the repository, so it always runs), through the
+# voice table and the NVDA binding on libssi263_voices.so (build_linux.sh: the speech-dispatcher module's own objects
+# as a library, for the tests, never shipped); its controls, as nvda/tools/run_tests.py's
+check "SmarTalk voice: settings, cancel, parts, text (voice API and binding)" python3 tools/check_st_voice.py \
+    build/linux/libssi263_voices.so
+control "SmarTalk voice CONTROL (the tone pinned to A, must fail)" "^FAIL  tone: A lower, Z higher than I " \
+    "^ok    volume: the gain only " "^st voice: 1 FAILED$" -- \
+    env ST_VOICE_BREAK=1 python3 tools/check_st_voice.py build/linux/libssi263_voices.so
+control "SmarTalk voice CONTROL (the rate's old mapping, 50 = ESC >5, must fail)" \
+    "^FAIL  rate back at 50: a fresh unit's speed " "^ok    rate: 0 slower, 100 faster " "^st voice: 1 FAILED$" -- \
+    env ST_RATE_BREAK=1 python3 tools/check_st_voice.py build/linux/libssi263_voices.so
+control "SmarTalk voice CONTROL (the bank's last slot kept on a boot change, must fail)" \
+    "^FAIL  a bank's unit made again on a boot change " "^ok    speaks through the table " "^st voice: 1 FAILED$" -- \
+    env SSV_BANK_BREAK=1 python3 tools/check_st_voice.py build/linux/libssi263_voices.so
+# Automated Functions' SmarTalk: S_TALK.EXE is in the repository, so the package always carries it with its notice
+if ./build/linux/sd_ssi263 --voices | grep -q '^smartalk'; then
+    check "the SmarTalk in the package, with its notices" sh -c "tar -tzf build/ssi263-speech-*-linux-$(uname -m).tar.gz | \
+        grep -c -E '/(share/ssi263-speech/automated-functions-smartalk/S_TALK\.EXE|licenses/MAME-8086-core-BSD-3-Clause\.txt|licenses/SmarTalk-software-notice\.txt)\$' | \
+        grep -qx 3 && echo 'S_TALK.EXE, its notice, MAME 8086 BSD-3-Clause: in the package'"
+fi
 check "no-GPL audit: comments and MAME compatibility names are not evidence" python3 tools/check_no_gpl.py \
     --clean-sample
 check "no build path in what ships" sh -c "! grep -a -q -F '$ROOT' '$LIB' build/linux/sd_ssi263 build/linux/blazie_emu \

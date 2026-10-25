@@ -14,7 +14,8 @@
 
 #include "voices.h"
 #include "voices_blazie.h"             /* SSV_BLAZIE_RELEASE_VOICES */
-#include "blazie/bl_firmware.h"        /* the release table: blv_release_* */
+#include "blazie/bl_firmware.h"        /* the release table: blv_release_*; blv_sha256 */
+#include "smartalk/st_host.h"          /* STH_SHA256 */
 #include "accentsa/as_voice.h"
 #include "speakout/so_voice.h"
 #ifdef SSV_HAVE_MOCKINGBOARD
@@ -121,6 +122,8 @@ struct ssa_engine {
     size_t mini_n;
     unsigned char *mb[2];              /* the Mockingboards' built-in files (1.1, early), from ssa_set_mockingboard */
     size_t mb_n[2];
+    unsigned char *st;                 /* the SmarTalk's built-in S_TALK.EXE, from ssa_set_smartalk */
+    size_t st_n;
     ssv_voice *spare;                 /* the Accent SA's next unit: booted, not yet spoken on */
     ssv_voice *accent;                 /* the unit speaking the current utterance */
     int cur;                           /* the utterance's voice; -1 when none is running */
@@ -182,6 +185,12 @@ int ssa_mockingboard_source(const ssa_engine *e, int voice)
     return e->mb[voice - SSA_MOCKINGBOARD] && ssa_voice_break != 8 ? 2 : 0;
 }
 
+int ssa_smartalk_source(const ssa_engine *e)
+{
+    if (imported(e, SSA_SMARTALK) && ssa_voice_break != 13) return 1;
+    return e->st && ssa_voice_break != 14 ? 2 : 0;
+}
+
 /* A unit of the voice, made by voices.c from where the app keeps its files. */
 static ssv_voice *make_unit(ssa_engine *e, int voice, char *err, int errlen)
 {
@@ -198,6 +207,9 @@ static ssv_voice *make_unit(ssa_engine *e, int voice, char *err, int errlen)
     } else if (is_mb(voice) && ssa_mockingboard_source(e, voice) == 2) {   /* no imported copy: the built-in one */
         src.data[0] = e->mb[voice - SSA_MOCKINGBOARD];
         src.size[0] = e->mb_n[voice - SSA_MOCKINGBOARD];
+    } else if (voice == SSA_SMARTALK && ssa_smartalk_source(e) == 2) {     /* no imported copy: the built-in one */
+        src.data[0] = e->st;
+        src.size[0] = e->st_n;
     } else
         for (k = 0; k < 3 && ssa_voice_file(voice, k, name, sizeof name); k++) {
             path(e, name, paths[k], sizeof paths[k]);
@@ -354,6 +366,7 @@ void ssa_free(ssa_engine *e)
     free(e->mini);
     free(e->mb[0]);
     free(e->mb[1]);
+    free(e->st);
     free(e->datadir);
     free(e);
 }
@@ -419,12 +432,40 @@ int ssa_set_mockingboard(ssa_engine *e, int voice, const unsigned char *bin, siz
     return 1;
 }
 
+int ssa_set_smartalk(ssa_engine *e, const unsigned char *exe, size_t n)
+{
+    static const char HEXD[] = "0123456789abcdef";
+    unsigned char *p, digest[32];
+    char got[65];
+    int i;
+    if (!ssa_voice_built(SSA_SMARTALK) || !exe || !n) return 0;
+    blv_sha256(exe, (long)n, digest);
+    for (i = 0; i < 32; i++) {
+        got[2 * i] = HEXD[digest[i] >> 4];
+        got[2 * i + 1] = HEXD[digest[i] & 15];
+    }
+    got[64] = 0;
+    if (strcmp(got, STH_SHA256)) return 0;             /* not S_TALK.EXE 1.21 */
+    if (!(p = (unsigned char *)malloc(n))) return 0;
+    memcpy(p, exe, n);
+    if (e->units[SSA_SMARTALK]) {      /* a unit made from another copy is let go: the next use makes it again */
+        if (e->cur == SSA_SMARTALK) ssa_cancel(e);
+        ssv_destroy(e->units[SSA_SMARTALK]);
+        e->units[SSA_SMARTALK] = NULL;
+    }
+    free(e->st);
+    e->st = p;
+    e->st_n = n;
+    return 1;
+}
+
 int ssa_has_voice(const ssa_engine *e, int voice)
 {
     if (!ssa_voice_built(voice)) return 0;
     if (voice == SSA_ACCENT_SA) return e->rom[0] && e->rom[1] && e->rom[2];
     if (voice == SSA_ACCENT_MINI) return e->mini != NULL;
     if (is_mb(voice)) return ssa_mockingboard_source(e, voice) != 0;
+    if (voice == SSA_SMARTALK) return ssa_smartalk_source(e) != 0;
     return imported(e, voice);
 }
 
@@ -461,6 +502,10 @@ int ssa_load(ssa_engine *e, int voice, char *err, int errlen)
     if (is_mb(voice) && !ssa_mockingboard_source(e, voice)) {
         snprintf(err, (size_t)errlen, "the Mockingboard's %s is neither imported nor built in",
                  VOICES[voice].files[0]);
+        return -1;
+    }
+    if (voice == SSA_SMARTALK && !ssa_smartalk_source(e)) {
+        snprintf(err, (size_t)errlen, "the SmarTalk's %s is neither imported nor built in", SSA_SMARTALK_FILE);
         return -1;
     }
     e->units[voice] = make_unit(e, voice, err, errlen);

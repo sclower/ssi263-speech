@@ -55,6 +55,10 @@ object SsiNative {
      * copy in the data folder wins.  False when it is not that voice's file or this build has no Mockingboard. */
     external fun nativeMockingboard(voice: Int, bin: ByteArray): Boolean
 
+    /** The SmarTalk's built-in S_TALK.EXE (the APK's assets/smartalk), copied into the open engine; an imported copy
+     * wins.  False when it is not S_TALK.EXE 1.21 (by its sha256) or this build has no SmarTalk. */
+    external fun nativeSmarTalk(exe: ByteArray): Boolean
+
     /** This build carries the voice's engine (no engine need be open): every voice but the Accent-mini and the
      * Mockingboards always. */
     external fun nativeVoiceBuilt(voice: Int): Boolean

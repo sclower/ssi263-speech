@@ -144,6 +144,13 @@ int ssa_set_mockingboard(ssa_engine *e, int voice, const unsigned char *bin, siz
    Mockingboard voice). */
 int ssa_mockingboard_source(const ssa_engine *e, int voice);
 
+/* The SmarTalk's built-in S_TALK.EXE (the GitHub APK's assets/smartalk: Tomi, 2026-10-24, as the Mockingboards' and
+   the Accents' -- its makers let it be shared; the Apple apps carry none), copied; used whenever the data folder has
+   no imported copy, which wins.  1, or 0 (not S_TALK.EXE 1.21 by its sha256, empty, out of memory, or this build has
+   no SmarTalk).  And where its file comes from now: 1 imported, 2 built in, 0 neither. */
+int ssa_set_smartalk(ssa_engine *e, const unsigned char *exe, size_t n);
+int ssa_smartalk_source(const ssa_engine *e);
+
 /* This build carries the voice's engine (every one but the Accent-mini and the Mockingboards always does). */
 int ssa_voice_built(int voice);
 
@@ -210,7 +217,8 @@ int ssa_smartalk_pitch(int slider, int request);       /* ... with the SmarTalk'
    7: a Mockingboard's imported copy ignored (the built-in one always used); 8: the built-in copies ignored (import
    only); 9: ssa_set_mockingboard takes any file for either voice (no mbh_variant check); 10: the Braille Lite's
    line-start lift dropped; 11: the SmarTalk's request pitch dropped (no capital offset); 12: the SmarTalk's number
-   words dropped (always off). */
+   words dropped (always off); 13: the SmarTalk's imported copy ignored (the built-in one used); 14: its built-in copy
+   ignored (import only). */
 extern int ssa_accent_break;
 extern int ssa_voice_break;
 

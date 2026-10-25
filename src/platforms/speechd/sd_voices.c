@@ -67,6 +67,9 @@ static const voice_def ALL[] = {
     /* 0.8.5: GW Micro's Sounding Board, the Speak-Out's voice on the card's DOS drivers (voices.c, last) */
     {"speakout:soundingboard", "Sounding Board (GW Micro)", "en-US", "soundingboard",
      {"gw-micro-sounding-board/SBLOAD.COM", "gw-micro-sounding-board/SB.COM", NULL}},
+    /* Automated Functions' SmarTalk: its own DOS text-to-speech, S_TALK.EXE 1.21 (voices.c, after the Sounding Board) */
+    {"smartalk:smartalk", "SmarTalk (Automated Functions)", "en-US", "smartalk",
+     {"automated-functions-smartalk/S_TALK.EXE", NULL}},
 };
 #define N_ALL ((int)(sizeof ALL / sizeof ALL[0]))
 
@@ -189,6 +192,8 @@ static void settings_for(int i, const sd_settings *s, int rate, int pitch, int v
         o->pack = s->speakout_short_pauses;
         break;
     case SSV_MOCKINGBOARD:             /* mbv_set: rate, pitch, volume; number words on (its defaults) */
+    case SSV_SMARTALK:                 /* stv_set: rate, pitch, volume; its tone I, inflection and number words on
+                                          (its defaults) */
         break;
     }
 }

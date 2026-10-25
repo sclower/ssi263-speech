@@ -18,7 +18,8 @@ different points, the cut audio must still agree as far as both go and the next 
 checks it (voiced, as long as alone within 10 %), with the difference said.
 
 Every voice of the reference, and every voice 0.7.0's drivers never had (NATIVE_ONLY: the Mockingboard, new in 0.8,
--- both its versions, 1.1 and the early one -- and 0.8's German, Italian and Slovak Braille units) must be in the
+-- both its versions, 1.1 and the early one -- 0.8's German, Italian and Slovak Braille units, and the SmarTalk) must
+be in the
 native host's listing on both widths, or the run FAILS
 naming it: a voice whose firmware is missing is not listed, and a request for it would quietly speak another
 (ssi_voice's fallback: the first voice there).
@@ -82,7 +83,7 @@ TEXTS = {
 }
 # the voices with no Python reference, held to themselves (own_checks)
 NATIVE_ONLY = ["mockingboard:mockingboard", "mockingboard:early", "blazie:blazie_de", "blazie:blazie_it",
-               "blazie:blazie_sk"]
+               "blazie:blazie_sk", "smartalk:smartalk"]
 OWN_AFTER = {"blazie:blazie_de": "Mein Computer"}   # the text alone and after the cancel (else "OK button")
 OWN = [("default", TEXTS["en"][0], 50, 50), ("numbers and money", TEXTS["en"][1], 50, 50),
        ("faster, higher", TEXTS["en"][0], 75, 60), ("slowest, highest", TEXTS["en"][0], 0, 100),

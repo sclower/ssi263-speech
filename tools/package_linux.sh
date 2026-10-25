@@ -15,6 +15,8 @@
 #     firmware/aicom-accent-mini when the module has the Accent-mini;
 #   the Sounding Board's drivers (GW Micro's, SBLOAD.COM and SB.COM, never in the repository) from the firmware
 #     folder's gw-micro-sounding-board/ or firmware/gw-micro-sounding-board/, with their notice;
+#   the SmarTalk's S_TALK.EXE (Automated Functions', in the repository) from firmware/automated-functions-smartalk/,
+#     with its notice;
 #   the Speak-Out's (GW Micro's, never in the repository), when the module has the Speak-Out: SPEAKOUT.HEX from the
 #     firmware folder, its gw-micro-speakout/ or ../speakout-firmware/, or firmware/gw-micro-speakout/;
 #   the Mockingboard's (Sweet Micro Systems', never in the repository), when the module has the Mockingboard:
@@ -117,6 +119,14 @@ EOF
     else
         echo "note: the module has the Sounding Board, but its drivers were not found, so the voice is not packaged"
     fi
+fi
+# Automated Functions' SmarTalk: S_TALK.EXE, in the repository under its own notice (its makers let it be shared)
+if has smartalk; then
+    ST="$ROOT/firmware/automated-functions-smartalk"
+    mkdir -p "$STAGE/share/ssi263-speech/automated-functions-smartalk"
+    cp "$ST/S_TALK.EXE" "$STAGE/share/ssi263-speech/automated-functions-smartalk/"
+    cp "$ST/README.txt" "$STAGE/licenses/SmarTalk-software-notice.txt"
+    cp "$ROOT/src/csrc/cpu/mame_i86/LICENSE-BSD-3-Clause.txt" "$STAGE/licenses/MAME-8086-core-BSD-3-Clause.txt"
 fi
 if has mockingboard; then
     # the 6502 core is in the module whether or not the firmware ships

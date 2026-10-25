@@ -31,6 +31,9 @@ import check_apk_no_firmware as apk  # noqa: E402
 
 # Aicom's files: allowed into the APK (apk.ALLOWED), never into the Apple apps
 AICOM = dict(apk.ALLOWED)
+# the SmarTalk's S_TALK.EXE: the GitHub APK carries it (apk.SMARTALK, in assets/smartalk only), the Apple apps never
+# (Tomi, 2026-10-24: import only there), wherever it sits
+SMARTALK = dict(apk.SMARTALK)
 
 
 def judge(label, data, name):
@@ -40,6 +43,10 @@ def judge(label, data, name):
     digest = hashlib.sha256(data).hexdigest()
     if digest in AICOM:
         hits.append("%s: Aicom's %s, by its sha256 (the Apple apps carry no firmware)" % (label, AICOM[digest]))
+    if digest in SMARTALK:                 # (the APK's rule, "outside assets/smartalk/", is no advice for an Apple app)
+        hits = [h for h in hits if not h.endswith(" outside " + apk.SMARTALK_DIR)]
+        hits.append("%s: the SmarTalk's %s, by its sha256 (the Apple apps carry no firmware)" % (label,
+                                                                                               SMARTALK[digest]))
     hits += ["%s: Aicom's %s inside it (the Apple apps carry no firmware)" % (label, a) for a in allowed
              if a not in [AICOM.get(digest)]]
     return hits
@@ -111,6 +118,8 @@ def synthetic(tmp):
     aicom = os.path.join(REPO, "firmware", "aicom-accent-sa", "u2.BIN")
     if os.path.isfile(aicom):
         controls.append(("Aicom's u2.BIN", open(aicom, "rb").read()))
+    if os.path.isfile(apk.SMARTALK_EXE):
+        controls.append(("the SmarTalk's S_TALK.EXE", open(apk.SMARTALK_EXE, "rb").read()))
     for label, content in controls:
         d = tempfile.mkdtemp(dir=tmp)
         print("control: %s added" % label)

@@ -47,7 +47,8 @@
  * mapping (ssa_map.h), so the "fast" cases must differ; accent-pitch, accent-glide, accent-reuse and accent-step are
  * ssa_engine.h's ssa_accent_break 1, 2, 3 and 4; speakout-pitch, speakout-settings, run-ahead, numbers,
  * mockingboard-pitch, mockingboard-numbers, mockingboard-import-ignored, mockingboard-builtin-ignored and
- * mockingboard-variant its ssa_voice_break 1 to 9, line-lift, smartalk-pitch and smartalk-numbers its 10, 11 and 12;
+ * mockingboard-variant its ssa_voice_break 1 to 9, line-lift, smartalk-pitch, smartalk-numbers,
+ * smartalk-import-ignored and smartalk-builtin-ignored its 10 to 14;
  * import-hash, import-dsk, import-lang, import-release, import-units, import-sb and import-st ssa_import.h's
  * ssa_import_break 1 to 7.
  *
@@ -650,6 +651,40 @@ static int mockingboard_builtin(const char *data, const char *dir)
     return rc;
 }
 
+/* The SmarTalk's built-in copy (the APK's assets/smartalk), the data folder's S_TALK.EXE handed over in memory: an
+   engine on a folder with no import speaks its "Hello." from it ("st-builtin"); where the file comes from, built in
+   alone and beside the imported copy in data ("st-source <builtin> <imported>": 2, then 1 -- the import wins); and a
+   copy with one byte changed refused ("st-refused <1 when refused>"). */
+static int smartalk_builtin(const char *data)
+{
+    size_t n;
+    unsigned char *exe = slurp(data, SSA_SMARTALK_FILE, &n);
+    ssa_engine *e, *f;
+    ssa_settings s;
+    digest d;
+    int rc = 0;
+    if (!exe) return 0;                      /* no S_TALK.EXE: no cases (said by the .py) */
+    e = ssa_new("no-such-folder");
+    f = ssa_new(data);
+    exe[100] ^= 1;
+    printf("st-refused %d\n", !ssa_set_smartalk(e, exe, n));
+    exe[100] ^= 1;
+    ssa_default_settings(&s);
+    if (!ssa_set_smartalk(e, exe, n) || !ssa_set_smartalk(f, exe, n)) {
+        fprintf(stderr, "the SmarTalk refused its own built-in S_TALK.EXE\n");
+        rc = 1;
+    } else {
+        printf("st-source %d %d\n", ssa_smartalk_source(e), ssa_smartalk_source(f));
+        if (speak(e, SSA_SMARTALK, "Hello.", &s, 100, 100, 4096, 0, &d))
+            d.samples = 0;                     /* it could not speak: reported as silence, which the .py refuses */
+        report("st-builtin", &d);
+    }
+    ssa_free(e);
+    ssa_free(f);
+    free(exe);
+    return rc;
+}
+
 /* --mb-direct: the reference -- mb_voice itself, driven as mb_voice.h says, with the settings the .py computed, on
    the firmware file given (either known one: mbv_create takes the version by its sha256) */
 static int mb_direct(const char *file)
@@ -857,7 +892,9 @@ int main(int argc, char **argv)
                     : !strcmp(brk, "mockingboard-pitch") ? 5 : !strcmp(brk, "mockingboard-numbers") ? 6
                     : !strcmp(brk, "mockingboard-import-ignored") ? 7 : !strcmp(brk, "mockingboard-builtin-ignored") ? 8
                     : !strcmp(brk, "mockingboard-variant") ? 9 : !strcmp(brk, "line-lift") ? 10
-                    : !strcmp(brk, "smartalk-pitch") ? 11 : !strcmp(brk, "smartalk-numbers") ? 12 : 0;
+                    : !strcmp(brk, "smartalk-pitch") ? 11 : !strcmp(brk, "smartalk-numbers") ? 12
+                    : !strcmp(brk, "smartalk-import-ignored") ? 13 : !strcmp(brk, "smartalk-builtin-ignored") ? 14
+                    : 0;
     ssa_import_break = !brk ? 0 : !strcmp(brk, "import-hash") ? 1 : !strcmp(brk, "import-dsk") ? 2
                      : !strcmp(brk, "import-lang") ? 3 : !strcmp(brk, "import-release") ? 4
                      : !strcmp(brk, "import-units") ? 5 : !strcmp(brk, "import-sb") ? 6
@@ -877,7 +914,7 @@ int main(int argc, char **argv)
     if (block("mb") && (mockingboard(argv[1], SSA_MOCKINGBOARD) || mockingboard(argv[1], SSA_MOCKINGBOARD_EARLY)))
         return 1;
     if (argc >= 5 && block("mb") && mockingboard_builtin(argv[1], argv[4])) return 1;
-    if (block("st") && smartalk(argv[1])) return 1;
+    if (block("st") && (smartalk(argv[1]) || smartalk_builtin(argv[1]))) return 1;
     /* the mapping itself: Android 100% is the slider; a doubling is SSIP 50 */
     if (ssa_rate(50, 100) != 50 || ssa_pitch(50, 50) != 25 || ssa_pitch(50, 400) != 100
             || ssa_ssip_from_percent(200) != 50 || ssa_to100(-100) != 0) {

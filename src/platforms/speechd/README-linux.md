@@ -13,6 +13,7 @@ rules, number reading and inflection are the firmware's own, live. Nothing is re
 | Speak-Out | English | GW Micro's 1995 talking box, its V40 firmware (when the package has it) |
 | Mockingboard | English | Sweet Micro Systems' Apple II speech card, its text-to-speech version 1.1 on an emulated 6502 (when the package has it) |
 | Mockingboard, early | English | the same card, the earlier text-to-speech of Mockingboard disk 1 with its own rules (when the package has it) |
+| SmarTalk (Automated Functions) | English | Automated Functions' 1995 parallel-port box, its own DOS text-to-speech on an emulated PC |
 
 This is a speech-dispatcher module, so Orca and anything else that speaks through speech-dispatcher can use it.
 Each voice is the same voice as in its NVDA add-on.
@@ -68,6 +69,10 @@ When the package has the Mockingboard voices, it carries Sweet Micro Systems' te
 from the Mockingboard Developers Toolkit disk, and the earlier one from Mockingboard disk 1, whichever ship). They are
 not ours; they are here so the card can speak again, and they will be removed if their rights holders ask
 (`licenses/Mockingboard-firmware-notice.txt`).
+
+The package carries Automated Functions' own software for the SmarTalk, `S_TALK.EXE` version 1.21, unchanged. It is
+Copyright 1995, Automated Functions, Inc., not under the MIT licence; its disk says "Please feel free to share the new
+version of the SmarTalk software with anyone who needs it" (`licenses/SmarTalk-software-notice.txt`).
 
 The program and library are MIT (`LICENSE`; the chip model draws on Casso's, also MIT:
 `licenses/Casso-MIT.txt`), except the CPU cores, which are MAME's and keep their BSD-3-Clause licences

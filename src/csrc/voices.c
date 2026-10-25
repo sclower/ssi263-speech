@@ -28,6 +28,9 @@
 #endif
 
 /* ---- the table ---------------------------------------------------------------------------------------------------- */
+/* the slots after the release voices' (a bank holds one unit per slot: SLOTS below counts them from these) */
+#define SLOT_SOUNDINGBOARD (9 + SSV_BLAZIE_RELEASE_VOICES)
+#define SLOT_SMARTALK (10 + SSV_BLAZIE_RELEASE_VOICES)
 static const ssv_info VOICES[] = {
     {"blazie:blazie", "Braille Lite 2000 (June 2003)", "en", SSV_BLAZIE, 0,
      {"blazie/BL2ENG.BNS", "blazie/bl2_2003_warm.state", NULL}},
@@ -55,11 +58,11 @@ static const ssv_info VOICES[] = {
     SSV_BLAZIE_RELEASE_ROWS
     /* 0.8.5: GW Micro's Sounding Board, the Speak-Out's front end in the card's own DOS drivers (version 2.7), for
        those who want them -- imported only, never shipped.  Last, so no earlier voice's index or slot moves */
-    {"speakout:soundingboard", "Sounding Board (GW Micro)", "en", SSV_SOUNDINGBOARD, 9 + SSV_BLAZIE_RELEASE_VOICES,
+    {"speakout:soundingboard", "Sounding Board (GW Micro)", "en", SSV_SOUNDINGBOARD, SLOT_SOUNDINGBOARD,
      {"gw-micro-sounding-board/SBLOAD.COM", "gw-micro-sounding-board/SB.COM", NULL}},
     /* Automated Functions' SmarTalk (1995): the box's own DOS text-to-speech, S_TALK.EXE 1.21, on the Accent-mini's
        pc86.  After the Sounding Board, so no earlier voice's index or slot moves */
-    {"smartalk:smartalk", "SmarTalk (Automated Functions)", "en", SSV_SMARTALK, 10 + SSV_BLAZIE_RELEASE_VOICES,
+    {"smartalk:smartalk", "SmarTalk (Automated Functions)", "en", SSV_SMARTALK, SLOT_SMARTALK,
      {"automated-functions-smartalk/S_TALK.EXE", NULL}},
 };
 #define NVOICES ((int)(sizeof VOICES / sizeof VOICES[0]))
@@ -491,7 +494,10 @@ SSV_API int ssv_render(ssv_voice *v, const short **pcm, int *done) { return v->e
 SSV_API void ssv_cancel(ssv_voice *v) { v->e->cancel(v->u); }
 
 /* ---- a bank ---------------------------------------------------------------------------------------------------------- */
-#define SLOTS (10 + SSV_BLAZIE_RELEASE_VOICES)    /* the table's slots 0..8, one per release voice, the Sounding Board's */
+/* the table's slots 0..8, one per release voice, the Sounding Board's and the SmarTalk's: the last slot + 1.  (It was
+   the Sounding Board's + 1 when the SmarTalk came, so the SmarTalk's unit sat past the end of the bank and was never
+   let go on a boot change: the SAPI engine's test caught it.) */
+#define SLOTS (SLOT_SMARTALK + 1)
 
 struct ssv_bank {
     char *fwdir;
@@ -511,8 +517,8 @@ SSV_API ssv_bank *ssv_bank_new(const char *fwdir)
 
 static void bank_clear(ssv_bank *k)
 {
-    int s;
-    for (s = 0; s < SLOTS; s++) {
+    int s, n = getenv("SSV_BANK_BREAK") ? SLOTS - 1 : SLOTS;   /* the tests' control: the last slot kept, as it was */
+    for (s = 0; s < n; s++) {
         ssv_destroy(k->slot[s]);
         k->slot[s] = NULL;
     }
@@ -541,6 +547,7 @@ SSV_API ssv_voice *ssv_bank_voice(ssv_bank *k, int i, char *err, int errlen)
     int s;
     if (i < 0 || i >= NVOICES) { snprintf(err, errlen, "no voice %d", i); return NULL; }
     s = VOICES[i].slot;
+    if (s < 0 || s >= SLOTS) { snprintf(err, errlen, "voice %d's slot %d is not in the bank", i, s); return NULL; }
     if (k->slot[s] && k->slot[s]->index != i) {
         ssv_destroy(k->slot[s]);
         k->slot[s] = NULL;

@@ -87,10 +87,15 @@ if MOCKINGBOARD:
 REFUSED = {"1c6930c8c6aed0550bc267c14032f9195b450ed95de606f2fa9727e2b7eb1eb1": "the Speak-Out's SPEAKOUT.HEX",
            # the Sounding Board's two drivers (0.8.5, imported only; .COM files no name rule here catches)
            "f821c9c28180cfcecc0e5b422bb30b1b8a97d37bac7188405f066baa56cd7b72": "the Sounding Board's SBLOAD.COM",
-           "0946a2f2caa5acad54ef2113d1ebb5f40f686219eea0b3697e478dce19c9158e": "the Sounding Board's SB.COM",
-           # the SmarTalk's TSR: in the repository and the NVDA add-on (its disk says to share it), never in the phone
-           # apps, which stay firmware-free (Tomi, 2026-10-21)
-           "6cef7bc467959960505bfd771d07f387b7bdfad25bad2b51801ae56bb8d78e6c": "the SmarTalk's S_TALK.EXE"}
+           "0946a2f2caa5acad54ef2113d1ebb5f40f686219eea0b3697e478dce19c9158e": "the Sounding Board's SB.COM"}
+# the SmarTalk's TSR (Automated Functions', its disk says to share it; in the repository and the NVDA add-on): the
+# GitHub APK carries it as it carries the Mockingboards' files (Tomi, 2026-10-24), in SMARTALK_DIR only, with its
+# notice.  The Apple apps never do (their audit refuses it: check_archive_no_firmware.py)
+SMARTALK_DIR = "assets/smartalk/"
+SMARTALK = {"6cef7bc467959960505bfd771d07f387b7bdfad25bad2b51801ae56bb8d78e6c": "S_TALK.EXE"}
+SMARTALK_NOTICE = "SmarTalk-software-notice.txt"
+SMARTALK_NOTICE_SRC = os.path.join("firmware", "automated-functions-smartalk", "README.txt")
+SMARTALK_EXE = os.path.join(REPO, "firmware", "automated-functions-smartalk", "S_TALK.EXE")
 # the Mockingboards' files (Sweet Micro's: the GitHub APK carries them, Tomi 2026-10-10), in SWEET_DIR only, with
 # Sweet Micro's notice; build_android.sh takes them from FIRMWARE_MB (local copies, never committed)
 SWEET_DIR = "assets/sweet-micro/"
@@ -124,6 +129,14 @@ def scan(label, data, hits, allowed, depth=0, name="", sweet=None):
         if sweet is not None:
             sweet.append(SWEET[digest])
         return
+    if depth == 1 and name == SMARTALK_DIR + "S_TALK.EXE" and digest in SMARTALK:
+        if sweet is not None:
+            sweet.append(SMARTALK[digest])
+        return
+    if depth == 1 and name.startswith(SMARTALK_DIR):
+        hits.append("%s: in %s but not the SmarTalk's S_TALK.EXE (sha256 %s...)" % (label, SMARTALK_DIR, digest[:12]))
+    if digest in SMARTALK:
+        hits.append("%s: the SmarTalk's S_TALK.EXE outside %s" % (label, SMARTALK_DIR))
     if depth == 1 and name.startswith(AICOM_DIR):
         hits.append("%s: in %s but not one of the Aicom ROMs (sha256 %s...)" % (label, AICOM_DIR, digest[:12]))
     if depth == 1 and name.startswith(SWEET_DIR):
@@ -174,6 +187,9 @@ def synthetic():
             z.writestr(SWEET_DIR + n, open(os.path.join(FIRMWARE_MB, n), "rb").read())
         if mb:
             z.writestr("assets/licenses/" + SWEET_NOTICE, open(os.path.join(REPO, SWEET_NOTICE_SRC), "rb").read())
+        if os.path.isfile(SMARTALK_EXE):
+            z.writestr(SMARTALK_DIR + "S_TALK.EXE", open(SMARTALK_EXE, "rb").read())
+            z.writestr("assets/licenses/" + SMARTALK_NOTICE, open(os.path.join(REPO, SMARTALK_NOTICE_SRC), "rb").read())
     return out.getvalue()
 
 
@@ -181,7 +197,8 @@ def licence_hits(label, data, sweet=()):
     """The licences missing from the APK (Sweet Micro's notice when it carries a Mockingboard file), and every
     z180emu, GPL or Unicorn find (tools/check_no_gpl.py)."""
     names = set(zipfile.ZipFile(io.BytesIO(data)).namelist())
-    need = list(LICENSES) + ([SWEET_NOTICE] if sweet else [])
+    need = list(LICENSES) + ([SWEET_NOTICE] if set(sweet) & set(SWEET.values()) else []) + \
+        ([SMARTALK_NOTICE] if set(sweet) & set(SMARTALK.values()) else [])
     hits = ["%s: no assets/licenses/%s" % (label, n) for n in need if "assets/licenses/" + n not in names]
     check_no_gpl.scan(label, data, hits, 0)
     return hits
@@ -209,7 +226,7 @@ def flip(data, name, at):
 
 def main():
     args = sys.argv[1:]
-    control = flipped = gpl = mb_flipped = no_notice = None
+    control = flipped = gpl = mb_flipped = no_notice = st_flipped = no_st_notice = None
     if args[:1] == ["--control-gpl"]:        # z180emu's GPL text among the licences: this run must FAIL
         gpl, args = True, args[1:]
     elif args[:1] == ["--control"]:            # --control <a firmware or state file> <apk>: this run must FAIL
@@ -220,6 +237,10 @@ def main():
         mb_flipped, args = True, args[1:]
     elif args[:1] == ["--control-no-sweet-notice"]:
         no_notice, args = True, args[1:]
+    elif args[:1] == ["--control-smartalk-flipped"]:
+        st_flipped, args = True, args[1:]
+    elif args[:1] == ["--control-no-smartalk-notice"]:
+        no_st_notice, args = True, args[1:]
     bad = 0
     for apk in args:
         hits, allowed, sweet = [], [], []
@@ -235,6 +256,10 @@ def main():
             data = flip(data, SWEET_DIR + "mockingboard-tts-1.1.bin", 0x800)
         if no_notice:
             data = with_file(data, "assets/licenses/" + SWEET_NOTICE, None, replace=True)
+        if st_flipped:
+            data = flip(data, SMARTALK_DIR + "S_TALK.EXE", 0x100)
+        if no_st_notice:
+            data = with_file(data, "assets/licenses/" + SMARTALK_NOTICE, None, replace=True)
         if gpl:
             data = with_file(data, "assets/licenses/z180emu-GPL-2.0.txt",
                              open(os.path.join(REPO, "third_party", "z180emu", "COPYING"), "rb").read())
@@ -244,9 +269,13 @@ def main():
         print("%s: %d entries, %s; Aicom ROMs allowed: %d%s" % (
             label, n, "no firmware" if not hits else "FIRMWARE: " + "; ".join(hits[:5]), len(allowed),
             "" if not allowed else " (%s)" % ", ".join(sorted(allowed))))
-        print("%s: Sweet Micro's files allowed: %d%s" % (label, len(sweet), "" if not sweet else " (%s), %s" % (
-            ", ".join(sorted(sweet)), "with its notice" if not any(SWEET_NOTICE in h for h in lic)
+        mb = [f for f in sweet if f in SWEET.values()]
+        st = [f for f in sweet if f in SMARTALK.values()]
+        print("%s: Sweet Micro's files allowed: %d%s" % (label, len(mb), "" if not mb else " (%s), %s" % (
+            ", ".join(sorted(mb)), "with its notice" if not any(SWEET_NOTICE in h for h in lic)
             else "WITHOUT its notice")))
+        print("%s: the SmarTalk's file allowed: %d%s" % (label, len(st), "" if not st else " (%s), %s" % (
+            ", ".join(st), "with its notice" if not any(SMARTALK_NOTICE in h for h in lic) else "WITHOUT its notice")))
         print("%s: licences %s" % (label, "MIT (ours, Casso's), MAME's BSD-3-Clause (Z180, 8085, V40, 8086), Aicom's%s; "
                                    "no GPL or Unicorn" % (", Fake6502's and EchoTalk's" if MOCKINGBOARD else "")
                                    if not lic else "WRONG: " + "; ".join(lic[:5])))

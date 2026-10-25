@@ -90,6 +90,21 @@ JNIEXPORT jboolean JNICALL FN(nativeMockingboard)(JNIEnv *env, jclass cls, jint 
     return ok ? JNI_TRUE : JNI_FALSE;
 }
 
+/* The SmarTalk's built-in S_TALK.EXE (the APK's assets/smartalk), copied into the engine; an imported copy wins. */
+JNIEXPORT jboolean JNICALL FN(nativeSmarTalk)(JNIEnv *env, jclass cls, jbyteArray jexe)
+{
+    jbyte *p;
+    jsize n;
+    int ok;
+    (void)cls;
+    if (!g_engine || !jexe) return JNI_FALSE;
+    n = (*env)->GetArrayLength(env, jexe);
+    if (!(p = (*env)->GetByteArrayElements(env, jexe, NULL))) return JNI_FALSE;
+    ok = ssa_set_smartalk(g_engine, (const unsigned char *)p, (size_t)n);
+    (*env)->ReleaseByteArrayElements(env, jexe, p, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
 /* This build carries the voice's engine (no engine needs to be open). */
 JNIEXPORT jboolean JNICALL FN(nativeVoiceBuilt)(JNIEnv *env, jclass cls, jint voice)
 {

@@ -127,6 +127,7 @@ contents() {                        # archive, then kind (full|emu): what must a
             licenses/Speak-Out-firmware-notice.txt share/ssi263-speech/speech-dispatcher/ssi263.conf
             share/ssi263-speech/gw-micro-sounding-board/SBLOAD.COM share/ssi263-speech/gw-micro-sounding-board/SB.COM
             licenses/Sounding-Board-drivers-notice.txt
+            share/ssi263-speech/automated-functions-smartalk/S_TALK.EXE licenses/SmarTalk-software-notice.txt
             share/ssi263-speech/Lite2000_de.BNS share/ssi263-speech/lite2000_de_fresh.state
             share/ssi263-speech/Lite2000_it.BNS share/ssi263-speech/lite2000_it_fresh.state
             share/ssi263-speech/BS2SLL.BNS share/ssi263-speech/bs2sll_fresh.state"

@@ -217,15 +217,15 @@ class SettingsActivity : Activity() {
             "coming with this app; the Aicom Accent-mini, its DOS driver on an emulated PC, when this copy of the " +
             "app carries it; and the Sweet Micro Systems Mockingboard, the Apple II's speech card, its own " +
             "text-to-speech on an emulated 6502 -- version 1.1 from the Developers Toolkit, and the early one from " +
-            "Mockingboard disk 1 -- when this copy carries them. They speak English, and the Accent SA is the voice " +
+            "Mockingboard disk 1 -- when this copy carries them; and Automated Functions' SmarTalk, a parallel-port " +
+            "box, its own DOS text-to-speech on an emulated PC. They speak English, and the Accent SA is the voice " +
             "you hear until you import a Braille Lite."))
         root.addView(ui.body(
             "\nTo add: the Blazie Braille Lite 2000 in speech-box mode, its own firmware on an emulated Z180, " +
             "in English, Spanish, German and Italian, and with its language updates in many more (the list below); " +
             "the Blazie Braille 'n Speak 2000 the same way, in Slovak; and " +
             "the GW Micro Speak-Out, its own firmware on an emulated V40, in English; GW Micro's Sounding " +
-            "Board, the same voice on the card's own DOS drivers; and Automated Functions' SmarTalk, its own DOS " +
-            "text-to-speech on an emulated PC, in English. Each language is offered to " +
+            "Board, the same voice on the card's own DOS drivers. Each language is offered to " +
             "TalkBack and the system once its unit is imported."))
 
         root.addView(ui.heading("Firmware to import"))
@@ -247,9 +247,9 @@ class SettingsActivity : Activity() {
             "choose GW Micro's " +
             "SPEAKOUT.HEX, or the speakout.zip holding it; it is checked and ready in a moment. For the Sounding " +
             "Board, choose GW Micro's sb.zip, or its SBLOAD.COM and SB.COM together: the voice needs both, and the " +
-            "rest of the zip is its documentation. For the SmarTalk, choose its S_TALK.EXE, from the SmarTalk's " +
-            "disk or the NVDA add-on, which carries it: Automated Functions let it be shared, but this app carries " +
-            "no firmware of anyone's. The Mockingboards " +
+            "rest of the zip is its documentation. The SmarTalk's S_TALK.EXE comes with this app (Automated " +
+            "Functions let it be shared); a copy you import, from the SmarTalk's disk or the NVDA add-on, is used " +
+            "instead. The Mockingboards " +
             "can be imported too, in place of the copies built in, or when this copy of the app has none: the " +
             "Mockingboard Developers Toolkit's disk image (.dsk) or the mockingboard-tts-1.1.bin made from it, and " +
             "Mockingboard disk 1's image or mockingboard-tts-early.bin for the early one; each is checked and ready " +

@@ -262,6 +262,13 @@ if [ -f "$SRC/soundingboard/sb_host.c" ] && [ -f "$SRC/speakout/so_voice.c" ] &&
     VOICE="$VOICE -I$SRC/soundingboard -DSO_HAVE_SOUNDINGBOARD"
     SD_DEFS="$SD_DEFS -DSSV_HAVE_SOUNDINGBOARD -DSO_HAVE_SOUNDINGBOARD"
 fi
+# the SmarTalk: Automated Functions' S_TALK.EXE on the same pc86 (st_voice.h); its sources are C99, as the Windows and
+# Android builds compile them
+ST_SRCS=""
+if [ -f "$SRC/smartalk/st_voice.c" ] && [ -f "$SRC/accentmini/am_voice.c" ]; then
+    ST_SRCS="$SRC/smartalk/st_host.c $SRC/smartalk/st_voice.c"
+    SD_DEFS="$SD_DEFS -DSSV_HAVE_SMARTALK"
+fi
 if [ -f "$SRC/mockingboard/mb_voice.c" ]; then     # the Mockingboard (0.8): Fake6502, the board, the host, the voice
     VOICE_SRCS="$VOICE_SRCS $SRC/cpu/m6502.c $SRC/mockingboard/mb_board.c $SRC/mockingboard/mb_host.c $SRC/mockingboard/mb_voice.c $SRC/mockingboard/mb_dsk.c"
     SD_DEFS="$SD_DEFS -DSSV_HAVE_MOCKINGBOARD"
@@ -269,12 +276,18 @@ fi
 for f in $VOICE_SRCS; do
     $CC $VOICE -I"$(dirname "$f")" -c -o "$OUT/obj_voices/$(basename "$f" .c).o" "$f"
 done
+for f in $ST_SRCS; do
+    $CC $VOICE -std=gnu99 -c -o "$OUT/obj_voices/$(basename "$f" .c).o" "$f"
+done
 ENGINE_OBJS="$ENGINE_OBJS $OUT/obj_voices/*.o"
 $CC $BOARD -c -o "$OUT/sd_ssi263.o" "$ROOT/src/platforms/speechd/sd_ssi263.c"
 $CC $BOARD -c -o "$OUT/sd_voices.o" "$ROOT/src/platforms/speechd/sd_voices.c"
 $CC $VOICE $SD_DEFS -c -o "$OUT/sd_ssv.o" "$SRC/voices.c"
 $CXX $SHARED_CXX -o "$OUT/sd_ssi263" "$OUT/sd_ssi263.o" "$OUT/sd_voices.o" "$OUT/sd_ssv.o" $LIB_OBJS $ENGINE_OBJS -lm
 $CXX -shared $SHARED_CXX -o "$OUT/libsd_voices_ref.so" $CHIP_OBJS $NUM_OBJS $ENGINE_OBJS -lm
+# libssi263_voices.so: the module's voice table and engines as a library, as ssi263speech.dll is on Windows, for the
+# tests that drive the voice API (tools/check_st_voice.py); never shipped
+$CXX -shared $SHARED_CXX -o "$OUT/libssi263_voices.so" "$OUT/sd_ssv.o" $LIB_OBJS $ENGINE_OBJS -lm
 echo "built $OUT/sd_ssi263: $("$OUT/sd_ssi263" --voices | cut -f3 | paste -sd ';' - | sed 's/;/; /g')"   # a name may hold a comma
 
 # The Accent-mini in C (src/csrc/accentmini: SPKEMS.DVC on MAME's 8086 above, accent.py's host and the NVDA driver's

@@ -12,6 +12,7 @@
 #                                        emulator, the BT Speak / BT Braille frontend blazie_emu_bt and its worker)
 #       README-blazie-emu.md  LICENSE    (README-blazie-bt.md too, with the BT frontend)
 #       licenses/Casso-MIT.txt  licenses/MAME-Z180-core-BSD-3-Clause.txt
+#       licenses/*-notice.txt            the package's firmware notices, with its firmware below
 #       share/ssi263-speech/...          the package's firmware folder as it is, without speech-dispatcher/
 #       share/applications/...           the GTK emulator's menu entry, when the package has one
 #       share/ssi263-speech/bns2000/     the Braille 'n Speak 2000, English and Slovak (Tomi: a preview for Slovak
@@ -48,6 +49,9 @@ cp -p "$PKG"/bin/blazie_* "$S/bin/"
 cp -p "$PKG/README-blazie-emu.md" "$PKG/LICENSE" "$S/"
 [ -f "$PKG/README-blazie-bt.md" ] && cp -p "$PKG/README-blazie-bt.md" "$S/"
 cp -p "$PKG/licenses/Casso-MIT.txt" "$PKG/licenses/MAME-Z180-core-BSD-3-Clause.txt" "$S/licenses/"
+# the firmware folder below goes as the package has it, so its notices go too (Aicom, Speak-Out, Sounding Board,
+# SmarTalk, Mockingboard: whichever the package carries); the 0.8 and 0.8.5 emulator archives carried the files alone
+cp -p "$PKG"/licenses/*-notice.txt "$S/licenses/"
 # the package's Slovak voice files (0.8: the speech module's flat copies) stay out: the emulator's Braille 'n Speak
 # 2000 is the bns2000/ folder below, and nothing else may hold a Braille 'n Speak 2000 image
 (cd "$PKG/share/ssi263-speech" && tar -cf - --exclude=./speech-dispatcher --exclude=./BS2SLL.BNS \

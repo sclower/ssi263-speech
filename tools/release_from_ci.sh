@@ -128,6 +128,9 @@ contents() {                        # archive, then kind (full|emu): what must a
             share/ssi263-speech/gw-micro-sounding-board/SBLOAD.COM share/ssi263-speech/gw-micro-sounding-board/SB.COM
             licenses/Sounding-Board-drivers-notice.txt
             share/ssi263-speech/automated-functions-smartalk/S_TALK.EXE licenses/SmarTalk-software-notice.txt
+            share/ssi263-speech/sweet-micro-mockingboard/mockingboard-tts-1.1.bin
+            share/ssi263-speech/sweet-micro-mockingboard/mockingboard-tts-early.bin
+            licenses/Mockingboard-firmware-notice.txt
             share/ssi263-speech/Lite2000_de.BNS share/ssi263-speech/lite2000_de_fresh.state
             share/ssi263-speech/Lite2000_it.BNS share/ssi263-speech/lite2000_it_fresh.state
             share/ssi263-speech/BS2SLL.BNS share/ssi263-speech/bs2sll_fresh.state"
@@ -145,11 +148,26 @@ contents() {                        # archive, then kind (full|emu): what must a
         never='speech-dispatcher/|bin/sd_ssi263'
     fi
     for f in $need; do echo "$t" | grep -q -E "^[^/]+/$f\$" || miss="$miss $f"; done
+    # each firmware folder it carries, with that firmware's notice (0.9.0: the emulator archives had none)
+    for p in aicom-accent-sa:Aicom aicom-accent-mini:Aicom gw-micro-speakout:Speak-Out-firmware \
+             gw-micro-sounding-board:Sounding-Board-drivers automated-functions-smartalk:SmarTalk-software \
+             sweet-micro-mockingboard:Mockingboard-firmware; do
+        echo "$t" | grep -q -E "^[^/]+/share/ssi263-speech/${p%%:*}/." || continue
+        echo "$t" | grep -q -E "^[^/]+/licenses/${p#*:}-notice\.txt\$" || miss="$miss licenses/${p#*:}-notice.txt"
+    done
     bad="$(echo "$t" | grep -i -E "$never")"
     [ -z "$miss" ] && [ -z "$bad" ] && { echo "ok    $(basename "$1"): $(echo "$need" | wc -w) files present, none of $never"; return 0; }
     [ -n "$miss" ] && echo "FAIL  $(basename "$1"): missing$miss"
     [ -n "$bad" ] && echo "FAIL  $(basename "$1"): must not carry: $bad"
     return 1
+}
+
+unnoticed() {                       # archive, kind: contents on a copy with its firmware notices taken out; exit 1
+    u="$(mktemp -d)"; mkdir "$u/x"  # only when contents names a missing notice (another failure is not the control's)
+    tar -xzf "$1" -C "$u/x" && rm -f "$u"/x/*/licenses/*-notice.txt && (cd "$u/x" && tar -czf "$u/a.tar.gz" *) \
+        && contents "$u/a.tar.gz" "$2" > "$u/out"
+    cat "$u/out"; grep -q -E '^FAIL .*missing.* licenses/[^ ]+-notice\.txt' "$u/out"; r=$?
+    rm -rf "$u"; [ $r -ne 0 ]
 }
 
 glibc_of() {                        # archive...: the GLIBC floor of every binary in them, extracted
@@ -171,7 +189,8 @@ pi_verify() {                       # in $O, its assets: audit, GLIBC floor, con
     step glibc_floor glibc_of "$@"
     for a in "$@"; do
         case "$a" in ssi263-speech-*) step contents_package contents "$a" full;;
-                     blazie-emu-*) step contents_emu contents "$a" emu;; esac
+                     blazie-emu-*) step contents_emu contents "$a" emu
+                         step contents_emu_control unnoticed "$a" emu;; esac
     done
     sha256sum -b "$@" > "SHA256SUMS-$ARCH.txt"
 }
@@ -376,6 +395,7 @@ pi_all() {                          # armhf (needs no CI build) may already be r
     # through a restart, the GTK window) that failed beside it (0.8.0's first run; each passed alone)
     has aarch64 && pi_arch aarch64
     has x86_64 && pi_arch x86_64
+    true                            # an architecture left out is not a failure (0.9.0: it stopped "pi && fetch")
 }
 
 fetch() {

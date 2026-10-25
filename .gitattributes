@@ -16,3 +16,6 @@ src/data/rom_bits.csv -text
 third_party/** -text
 firmware/** -text
 src/platforms/btspeak/blazie text eol=lf
+# ... and its other scripts with no .sh: the User Menu's line and the Blazie menu, run by sh as BT Speak opens it
+src/platforms/btspeak/user-menu-entry text eol=lf
+src/platforms/btspeak/blazie.menu text eol=lf

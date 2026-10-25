@@ -350,7 +350,9 @@ download() {
 send_source() {
     pi_conn
     ssh $K "$PI" "mkdir -p $P/tools" </dev/null || exit 1
-    git -C "$REPO" archive --format=tar "$C" | ssh $K "$PI" "cat > $P/src.tar" || exit 1
+    # the commit as git holds it: on Windows, core.autocrlf would give every file with no eol attribute CR LF, and a
+    # script among them (user-menu-entry, blazie.menu) fails under sh in the .deb and the arm archives (0.9.0)
+    git -C "$REPO" -c core.autocrlf=false archive --format=tar "$C" | ssh $K "$PI" "cat > $P/src.tar" || exit 1
     scp -q $K "$HERE/release_from_ci.sh" "$HERE/package_emu_linux.sh" "$HERE/check_glibc_floor.sh" "$PI:$P/tools/" || exit 1
 }
 
